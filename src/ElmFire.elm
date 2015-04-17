@@ -1,11 +1,14 @@
 module ElmFire
-  ( Ref, QueryId
+  ( Ref
+  , Query
+  , QueryId
   , Response (..)
   , DataMsg
   , Error (..)
   , responses
   , location, child, parent
-  , open, set, query
+  , open, set, subscribe
+  , valueChanged
   ) where
 
 {-| Elm bindings to Firebase.
@@ -30,6 +33,9 @@ import Native.ElmFire
 import Json.Encode as JE
 import Task exposing (Task)
 
+{-| Errors reported from Firebase -}
+type Error = FirebaseError String
+
 {-| A reference to a Firebase location. This is an opaque type.
 References are constructed with the function `location`, `child`,
 `parent` and by running the `open` task.
@@ -40,8 +46,15 @@ type Ref
   | Parent Ref
   | RawRef
 
-{-| Errors reported from Firebase -}
-type Error = FirebaseError String
+type Query
+  = ValueChanged
+--| Child ChildQuery
+
+type ChildQuery
+  = Added
+  | Changed
+  | Removed
+  | Moved
 
 {-| Unique opaque identifier for each executed query -}
 type QueryId = QueryId
@@ -64,7 +77,7 @@ type alias DataMsg =
 
 {-| Construct a new reference from a full Firebase URL.
 
-    ref = location "https://samplechat.firebaseio-demo.com/"
+    ref = location "https://elmfire.firebaseio-demo.com/"
 -}
 location : String -> Ref
 location = Location
@@ -91,7 +104,7 @@ It can be used to check the reference and to cache Firebase references.
 The task fails if the refence construct is invalid.
 
     openTask =
-      (open <| child user <| location "https://samplechat.firebaseio-demo.com/users")
+      (open <| child user <| location "https://elmfire.firebaseio-demo.com/users")
       `andThen` Signal.send refs.address
 -}
 open : Ref -> Task Error Ref
@@ -118,8 +131,13 @@ and to cancel the query.
 
 The query results are reported via the signal `responses`.
 -}
-query : Ref -> Task Error QueryId
-query = Native.ElmFire.query
+subscribe : Query -> Ref -> Task Error QueryId
+subscribe = Native.ElmFire.subscribe
+
+{-| Query value changes at the referenced location
+-}
+valueChanged : Query
+valueChanged = ValueChanged
 
 {-| All query responses a reported through this signal `responses`.
 See the documentation of type `Response` for details.

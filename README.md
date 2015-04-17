@@ -36,7 +36,9 @@ Example:
     
 ## Querying a Location
 
-`query : Ref -> Task Error QueryId` Start a query for the value of the location. On success the task returns a QueryId, which can be used to match the corresponding responses.
+`subscribe : Query -> Ref -> Task Error QueryId` Start a query for the value of the location. On success the task returns a QueryId, which can be used to match the corresponding responses.
+
+The first parameter supports currently only the constant `valueChanged`. In later version there will be more query types like `child added` and so on.
 
 All query responses a reported through the signal `responses`:
 
@@ -52,7 +54,7 @@ A `DataMsg` carries the corresponding `QueryId` and `Just Value` for the Json va
 Example:
 
     port query : Task Error QueryId
-    port query = query ref
+    port query = subscribe valueChanged ref
     
     ... = Signal.map
             (\response -> case response of

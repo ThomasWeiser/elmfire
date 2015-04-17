@@ -82,7 +82,8 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 
 	var responses = Signal.input ('ElmFire.responses', { ctor: 'NoResponse' });
 
-	function query (elmRef) {
+	function subscribe (query, elmRef) {
+		// parameter query is not yet used (assumed to be always ValueChanged)
 		return Task .asyncFunction (function (callback) {
 			deref = getRef (elmRef);
 			if ('ref' in deref) {
@@ -120,7 +121,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 				queries [queryId] = {
 					callback: onResponse
 				};
-					deref.ref.on ('value', onResponse, onCancel);
+				deref.ref.on ('value', onResponse, onCancel);
 				callback (Task.succeed (queryId));
 			}
 			else {
@@ -132,7 +133,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 	return localRuntime.Native.ElmFire.values = {
 		open: open,
 		set: F2(set),
-		query: query,
+		subscribe: F2(subscribe),
 		responses: responses
 	};
 };

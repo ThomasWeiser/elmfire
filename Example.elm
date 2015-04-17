@@ -7,8 +7,9 @@ import Signal exposing (Signal, Mailbox, mailbox, message)
 import Task exposing (Task)
 import Json.Encode exposing (string)
 
-import ElmFire exposing (
-    location, set, query, responses, Response (..), QueryId, Error
+import ElmFire exposing
+  ( location, set, subscribe, valueChanged, responses
+  , Response (..), QueryId, Error
   )
 
 loc = "https://elmfire.firebaseio-demo.com/test"
@@ -22,7 +23,7 @@ port runSet = Signal.map
   inputString.signal
 
 port runQuery : Task Error QueryId
-port runQuery = query (location loc)
+port runQuery = subscribe valueChanged (location loc)
 
 view : Response -> Html
 view response =
