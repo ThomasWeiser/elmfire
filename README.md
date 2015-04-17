@@ -61,4 +61,13 @@ Example:
             )
             responses
     
-See `Example.elm` for working code that handles `responses`
+See `Example.elm` for working code that handles `responses`.
+
+## Example.elm
+
+There is a very basic example app. To build it:
+
+    elm-package install evancz/elm-html 3.0.0
+    elm-make --output Example.html Example.elm
+
+Prior to building you may want to put your own Firebase URL in it.
