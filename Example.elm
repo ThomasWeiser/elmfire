@@ -1,17 +1,22 @@
--- Basic ElmFire Example App
+{- Basic ElmFire Example App
 
+Write the text from a input field to a Firebase location.
+Query that same location and display the result.
+Use the displayed link to show the Firebase bashboard for the location.
+-}
 import Html exposing (Html, div, input, output, label, text, a)
 import Html.Events exposing (on, targetValue)
 import Html.Attributes exposing (href, target)
 import Signal exposing (Signal, Mailbox, mailbox, message)
 import Task exposing (Task)
-import Json.Encode exposing (string)
+import Json.Encode exposing (string, encode)
 
 import ElmFire exposing
   ( location, set, subscribe, valueChanged, responses
   , Response (..), QueryId, Error
   )
 
+-- You may want to change this url
 loc = "https://elmfire.firebaseio-demo.com/test"
 
 inputString : Mailbox String
@@ -29,7 +34,7 @@ view : Response -> Html
 view response =
   let outputText = case response of
     Data dataMsg ->
-      Maybe.withDefault "no value" <| Maybe.map toString dataMsg.value
+      Maybe.withDefault "no value" <| Maybe.map (encode 0) dataMsg.value
     otherwise -> "no query response"
   in
   div []

@@ -6,21 +6,21 @@ module ElmFire
   , DataMsg
   , Error (..)
   , responses
-  , location, child, parent
-  , open, set, subscribe
-  , valueChanged
+  , location, sub, parent
+  , open, set, remove, subscribe, unsubscribe
+  , valueChanged, child, added, changed, removed, moved
   ) where
 
 {-| Elm bindings to Firebase.
 
 # References to a Firebase location
-@docs Ref, location, child, parent, open
+@docs Ref, location, sub, parent, open
 
 # Writing
-@docs set
+@docs set, remove
 
 # Querying
-@docs query, QueryId
+@docs Query, QueryId, subscribe, unsubscribe, valueChanged, child, added, changed, removed, moved
 
 # Query results
 @docs Response, DataMsg, responses
@@ -31,24 +31,26 @@ module ElmFire
 
 import Native.ElmFire
 import Json.Encode as JE
+import Signal exposing (Address)
 import Task exposing (Task)
 
 {-| Errors reported from Firebase -}
 type Error = FirebaseError String
 
 {-| A reference to a Firebase location. This is an opaque type.
-References are constructed with the function `location`, `child`,
+References are constructed with the function `location`, `sub`,
 `parent` and by running the `open` task.
 -}
 type Ref
-  = Location String
-  | Child String Ref
-  | Parent Ref
+  = LocationRef String
+  | SubRef String Ref
+  | ParentRef Ref
   | RawRef
 
+{-| Specifies the event this query listens to (valueChanged, child added, ...) -}
 type Query
   = ValueChanged
---| Child ChildQuery
+  | Child ChildQuery
 
 type ChildQuery
   = Added
@@ -72,6 +74,7 @@ or it is `Nothing` when the queried location doesn't exist.
 -}
 type alias DataMsg =
   { queryId: QueryId
+  , key: Maybe String
   , value: Maybe JE.Value
   }
 
@@ -80,21 +83,21 @@ type alias DataMsg =
     ref = location "https://elmfire.firebaseio-demo.com/"
 -}
 location : String -> Ref
-location = Location
+location = LocationRef
 
-{-| Construct a reference for the location at the specified relative path.
+{-| Construct a reference for the descendant at the specified relative path.
 
-    refUsers = child "users" ref
+    refUsers = sub "users" ref
 -}
-child : String -> Ref -> Ref
-child = Child
+sub : String -> Ref -> Ref
+sub = SubRef
 
 {-| Construct a reference to the parent location.
 
     ref2 = parent ref1
 -}
 parent : Ref -> Ref
-parent = Parent
+parent = ParentRef
 
 {-| Actually open a reference and give an internal representation of that reference.
 
@@ -104,7 +107,7 @@ It can be used to check the reference and to cache Firebase references.
 The task fails if the refence construct is invalid.
 
     openTask =
-      (open <| child user <| location "https://elmfire.firebaseio-demo.com/users")
+      (open <| sub user <| location "https://elmfire.firebaseio-demo.com/users")
       `andThen` Signal.send refs.address
 -}
 open : Ref -> Task Error Ref
@@ -120,6 +123,16 @@ or you have no permission to write this data.
 set : JE.Value -> Ref -> Task Error ()
 set = Native.ElmFire.set
 
+{-| Delete a Firebase location.
+
+The task completes with `()` when
+synchronization to the Firebase servers has completed.
+The task may result in an error if the ref is invalid
+or you have no permission to remove this data.
+-}
+remove : Ref -> Task Error ()
+remove = Native.ElmFire.remove
+
 {-| Query a Firebase location.
 
 (This early version of ElmFire only supports simple value queries,
@@ -131,13 +144,39 @@ and to cancel the query.
 
 The query results are reported via the signal `responses`.
 -}
+-- subscribe : Address Response -> Query -> Ref -> Task Error QueryId
+-- TODO: Don't respond via the global signal `responses`.
+--       The addressee should be given as an argument.
 subscribe : Query -> Ref -> Task Error QueryId
 subscribe = Native.ElmFire.subscribe
 
-{-| Query value changes at the referenced location
--}
+{-| Cancel a query subscription -}
+unsubscribe : QueryId -> Task Error ()
+unsubscribe = Native.ElmFire.unsubscribe
+
+{-| Query value changes at the referenced location -}
 valueChanged : Query
 valueChanged = ValueChanged
+
+{-| Query child changes at the referenced location -}
+child : ChildQuery -> Query
+child = Child
+
+{-| Query child added -}
+added : ChildQuery
+added = Added
+
+{-| Query child changed -}
+changed : ChildQuery
+changed = Changed
+
+{-| Query child removed -}
+removed : ChildQuery
+removed = Removed
+
+{-| Query child moved -}
+moved : ChildQuery
+moved = Moved
 
 {-| All query responses a reported through this signal `responses`.
 See the documentation of type `Response` for details.

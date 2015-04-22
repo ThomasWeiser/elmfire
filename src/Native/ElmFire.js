@@ -17,11 +17,11 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 
 	function getRefUnsafe (elmRef) {
 		var rawRef;
-		if (elmRef.ctor === 'Location') {
+		if (elmRef.ctor === 'LocationRef') {
 			rawRef = new Firebase (elmRef._0);
-		} else if (elmRef.ctor === 'Child') {
+		} else if (elmRef.ctor === 'SubRef') {
 			rawRef = getRefUnsafe (elmRef._1) .child (elmRef._0);
-		} else if (elmRef.ctor === 'Parent') {
+		} else if (elmRef.ctor === 'ParentRef') {
 			rawRef = getRefUnsafe (elmRef._0) .parent ();
 			if (! rawRef) { throw ("no parent"); }
 		} else if (elmRef.ctor === 'RawRef') {
@@ -73,6 +73,24 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		});
 	}
 
+	function remove (elmRef) {
+		return Task .asyncFunction (function (callback) {
+			deref = getRef (elmRef);
+			if ('ref' in deref) {
+				deref.ref.remove (function (err) {
+					if (err) {
+						callback (Task.fail ({ ctor: 'FirebaseError', _0: err.toString () }));
+					} else {
+						callback (Task.succeed (Utils.Tuple0));
+					}
+				});
+			}
+			else {
+				callback (Task.fail ({ ctor: 'FirebaseError', _0: deref.error }));
+			}
+		});
+	}
+
 	var qNum = 0;
 	var queries = {};
 
@@ -83,24 +101,29 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 	var responses = Signal.input ('ElmFire.responses', { ctor: 'NoResponse' });
 
 	function subscribe (query, elmRef) {
-		// parameter query is not yet used (assumed to be always ValueChanged)
 		return Task .asyncFunction (function (callback) {
 			deref = getRef (elmRef);
 			if ('ref' in deref) {
 				var queryId = nextQueryId ();
 				var onResponse = function (snapshot) {
-					var val = snapshot .val ();
-					var maybeVal;
+					var val = snapshot .val (), maybeVal;
 					if (val === null) {
 						maybeVal = { ctor: 'Nothing' };
 					} else {
 						maybeVal = { ctor: 'Just', _0: val };
+					}
+					var key = snapshot .key (), maybeKey;
+					if (key === null) {
+						maybeKey = { ctor: 'Nothing' };
+					} else {
+						maybeKey = { ctor: 'Just', _0: key };
 					}
 					var res = {
 						ctor: 'Data',
 						_0: {
 							_: {},
 							queryId: queryId,
+							key: maybeKey,
 							value: maybeVal
 						}
 					};
@@ -118,10 +141,23 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 						localRuntime .notify (responses.id, res);
 					}, 0);
 				};
+				eventType = 'badQuery';
+				if (query.ctor === 'ValueChanged') {
+					eventType = 'value';
+				} else if (query.ctor === 'Child') {
+					switch (query._0.ctor) {
+						case 'Added':   eventType = 'child_added'; break;
+						case 'Changed': eventType = 'child_changed'; break;
+						case 'Removed': eventType = 'child_removed'; break;
+						case 'Moved':   eventType = 'child_moved'; break;
+					}
+				}
 				queries [queryId] = {
+					ref: deref.ref,
+					eventType: eventType,
 					callback: onResponse
 				};
-				deref.ref.on ('value', onResponse, onCancel);
+				deref.ref.on (eventType, onResponse, onCancel);
 				callback (Task.succeed (queryId));
 			}
 			else {
@@ -130,10 +166,23 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		});
 	}
 
+	function unsubscribe (queryId) {
+		return Task .asyncFunction (function (callback) {
+			if (queryId in queries) {
+				var query = queries [queryId];
+				query.ref.off (query.eventType, query.callback);
+				callback (Task.succeed (Utils.Tuple0));
+			} else {
+				callback (Task.fail ({ ctor: 'FirebaseError', _0: 'unknown queryId' }));
+			}
+		});
+	}
 	return localRuntime.Native.ElmFire.values = {
 		open: open,
 		set: F2(set),
+		remove: remove,
 		subscribe: F2(subscribe),
+		unsubscribe: unsubscribe,
 		responses: responses
 	};
 };
