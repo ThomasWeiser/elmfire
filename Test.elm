@@ -8,7 +8,7 @@ We aim to make the logging output look much more nicer.
 -}
 
 import Signal exposing (Signal, Mailbox, mailbox, message)
-import Task exposing (Task, andThen, onError, succeed, sleep)
+import Task exposing (Task, andThen, onError, fail, succeed, sleep)
 import Json.Encode as JE
 import Time
 import Html exposing (Html, div, input, output, label, text, a)
@@ -23,11 +23,17 @@ import ElmFire exposing
   , Ref, Query, Response (..), DataMsg, QueryId, Error (..)
   )
 
+-------------------------------------------------------------------------------
+
 url = "https://elmfire.firebaseio-demo.com/test"
+
+-------------------------------------------------------------------------------
 
 type LogEntry
   = LogNone
-  | LogNote String String -- step note
+  | LogTaskStart String
+  | LogTaskSuccess String String
+  | LogTaskFail String String
   | LogResponse Response
 
 notes : Signal.Mailbox LogEntry
@@ -73,8 +79,12 @@ viewModel model = List.foldl -- reverse the list for display
 viewLogEntry : LogEntry -> Maybe Html
 viewLogEntry logEntry = case logEntry of
   LogNone -> Nothing
-  LogNote step note ->
-    Just <| div [style [("backgroundColor", "#EFD8A1")]] [text <| step ++ ": " ++ note]
+  LogTaskStart step ->
+    Just <| div [style [("backgroundColor", "#EFD8B1")]] [text <| step ++ ". Started"]
+  LogTaskSuccess step res ->
+    Just <| div [style [("backgroundColor", "#EFD871")]] [text <| step ++ ". Success: " ++ res]
+  LogTaskFail step err ->
+    Just <| div [style [("backgroundColor", "#EFD8F1")]] [text <| step ++ ". Failure: " ++ err]
   LogResponse response ->
     Just <| div [style [("backgroundColor", "#BCD693")]] [case response of
       Data dataMsg -> viewDataMsg dataMsg
@@ -93,97 +103,83 @@ viewValue value = JE.encode 0 value
 
 main = Signal.map view state
 
-reportStep : String -> Task () () -> Task () ()
-reportStep step task =
-  Signal.send notes.address (LogNote step "(")
-  `andThen` \_ -> task
-  `andThen` \_ -> Signal.send notes.address (LogNote step ")")
+-------------------------------------------------------------------------------
 
-reportError : String -> Error -> Task () ()
-reportError step error =
-  Signal.send notes.address
-  ( case error of
-      FirebaseError str -> LogNote step str
-  )
-
-reportRef : String -> Ref -> Task x ()
-reportRef step ref =
-  Signal.send notes.address <| LogNote step (toString ref)
-
-reportQueryId : String -> QueryId -> Task x ()
-reportQueryId step queryId =
-  Signal.send notes.address <| LogNote step (toString queryId)
-
-reportCompletion : String -> () -> Task x ()
-reportCompletion step _ =
-  Signal.send notes.address <| LogNote step "completion"
-
--- TODO: Should return -> Task () Ref
-doOpen : String -> Ref -> Task () ()
-doOpen step ref =
-  reportStep step <|
-    open ref
-    `andThen` reportRef step
-    `onError` reportError step
-
-doSet : String -> JE.Value -> Ref -> Task () ()
-doSet step value ref =
-  reportStep step <|
-    set value ref
-    `andThen` reportCompletion step
-    `onError` reportError step
-
-doRemove : String -> Ref -> Task () ()
-doRemove step ref =
-  reportStep step <|
-    remove ref
-    `andThen` reportCompletion step
-    `onError` reportError step
-
--- TODO: Should return -> Task () QueryId
-doSubscribe : String -> Query -> Ref -> Task () ()
-doSubscribe step query ref =
-  reportStep step <|
-    subscribe query ref
-    `andThen` reportQueryId step
-    `onError` reportError step
-
--- TODO: Will become `doUnsubscribe`
-doSubscribeAndCancel : String -> Query -> Ref -> Task () ()
-doSubscribeAndCancel step query ref =
-  reportStep step <|
-    ( subscribe query ref
-     `andThen` \queryId -> unsubscribe queryId
+intercept : (v -> String) -> String -> Task Error v -> Task Error v
+intercept valueToString step task =
+  Signal.send notes.address (LogTaskStart step)
+  `andThen` \_ ->
+    ( task
+      `onError` \err -> Signal.send notes.address (LogTaskFail step (errorToString err))
+      `andThen` \_   -> fail err
     )
-    `andThen` reportCompletion step
-    `onError` reportError step
+    `andThen` \val -> Signal.send notes.address (LogTaskSuccess step (valueToString val))
+    `andThen` \_   -> succeed val
+
+errorToString : Error -> String
+errorToString error =
+  case error of
+      FirebaseError str -> str
+
+-------------------------------------------------------------------------------
+
+doOpen : String -> Ref -> Task Error Ref
+doOpen step ref =
+  intercept toString step (open ref)
+
+doSet : String -> JE.Value -> Ref -> Task Error ()
+doSet step value ref =
+  intercept (always "synced") step (set value ref)
+
+doRemove : String -> Ref -> Task Error ()
+doRemove step ref =
+  intercept (always "synced") step (remove ref)
+
+doSubscribe : String -> Query -> Ref -> Task Error QueryId
+doSubscribe step query ref =
+  intercept toString step (subscribe query ref)
+
+doUnsubscribe : String -> QueryId -> Task Error ()
+doUnsubscribe step queryId =
+  intercept (always "done") step (unsubscribe queryId)
 
 doSleep : String -> Float -> Task () ()
 doSleep step seconds =
-  reportStep step <|
-    sleep (seconds * Time.second)
+  Signal.send notes.address (LogTaskStart step)
+  `andThen` \_ -> sleep (seconds * Time.second)
+  `andThen` \_ -> Signal.send notes.address (LogTaskSuccess step "awake")
 
-spawn : Task () a -> Task () ()
-spawn task = Task.map (\_ -> ()) (Task.spawn task)
+
+-------------------------------------------------------------------------------
+
+andAnyway : Task x a -> Task y b -> Task y b
+andAnyway task1 task2 =
+  (Task.map (\_ -> ()) task1 `onError` (\_ -> succeed ()))
+  `andThen` (\_ -> task2)
 
 port runTasks : Task () ()
 port runTasks =
   doSubscribe "query1 valueChanged" valueChanged (location url)
-  `andThen` \_ -> (spawn <| doSet "set1 value" (JE.string "start") (location url))
-  `andThen` \_ -> doSubscribe "query2 parent valueChanged" valueChanged (location url |> parent)
-  `andThen` \_ -> sleep (3 * Time.second)
-  `andThen` \_ -> doSet "set2 value" (JE.string "hello") (location url)
-  `andThen` \_ -> doOpen "open" (location url)
-  `andThen` \_ -> doSubscribe "query3 child added" (child added) (location url)
-  `andThen` \_ -> doSubscribe "query4 child changed" (child changed) (location url)
-  `andThen` \_ -> doSubscribe "query5 child removed" (child removed) (location url)
-  `andThen` \_ -> doSubscribe "query6 child moved" (child moved) (location url)
-  `andThen` \_ -> doSleep "sleep 3 seconds" 3
-  `andThen` \_ -> doSet "set3 object value"
+  `andAnyway` (Task.spawn <| doSet "async set1 value" (JE.string "start") (location url))
+  `andAnyway` doSubscribe "query2 parent valueChanged" valueChanged (location url |> parent)
+  `andAnyway` doSleep "sleep 2 seconds" 2
+  `andAnyway` doSet "set2 value" (JE.string "hello") (location url)
+  `andAnyway` doOpen "open good" (location url)
+  `andAnyway` doOpen "open bad" (location url |> parent |> parent)
+  `andAnyway` doSubscribe "query3 child added" (child added) (location url)
+  `andAnyway` doSubscribe "query4 child changed" (child changed) (location url)
+  `andAnyway` doSubscribe "query5 child removed" (child removed) (location url)
+  `andAnyway` doSubscribe "query6 child moved" (child moved) (location url)
+  `andAnyway` doSleep "sleep 2 seconds" 2
+  `andAnyway` doSet "set3 object value"
       (JE.object [("a", (JE.string "hello")), ("b", (JE.string "Elm"))])
       (location url)
-  `andThen` \_ -> doSleep "sleep 3 seconds" 3
-  `andThen` \_ -> doSet "set4 add child" (JE.string "at Firebase") (location url |> sub "c")
-  `andThen` \_ -> doSleep "sleep 3 seconds" 3
-  `andThen` \_ -> doRemove "remove child" (location url |> sub "b")
-  `andThen` \_ -> doSubscribeAndCancel "subscribe and unsubscribe" valueChanged (location url)
+  `andAnyway` doSleep "sleep 2 seconds" 2
+  `andAnyway` doSet "set4 add child" (JE.string "at Firebase") (location url |> sub "c")
+  `andAnyway` doSleep "sleep 2 seconds" 2
+  -- `andAnyway` doSubscribeAndCancel "subscribe and unsubscribe" valueChanged (location url)
+  `andAnyway` ( doSubscribe "subscribe" valueChanged (location url)
+                `andThen` \queryId -> doUnsubscribe "unsubscribe" queryId
+              )
+  `andAnyway` doRemove "remove child" (location url |> sub "b")
+  `andAnyway` succeed ()
