@@ -81,7 +81,7 @@ Prior to building you may want to put your own Firebase URL in it.
 
 I started a testing app. It runs a given sequence of tasks on the Firebase API and logs these steps along with the query results.
 
-Its not finished yet. At least some beautification for the html output is needed.
+There is a Makefile to build the app. On most Unix-like systems a `make all open` should do the trick.
 
 ## Future work
 
@@ -93,4 +93,4 @@ There are a lot of features I plan to add in the near future:
 * Better test app
 * A nice example app
 
-Also please take notice that the API is not stabilzed yet. The exact interface may change a bit here and there.
+Also please take notice that the API is not stabilized yet. The exact interface may change a bit here and there.

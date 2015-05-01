@@ -11,9 +11,9 @@ import Signal exposing (Signal, Mailbox, mailbox, message)
 import Task exposing (Task, andThen, onError, fail, succeed, sleep)
 import Json.Encode as JE
 import Time
-import Html exposing (Html, div, input, output, label, text, a)
+import Html exposing (Html, div, span, input, output, label, text, a, h1, h2)
 import Html.Events exposing (on, targetValue)
-import Html.Attributes exposing (href, target, style)
+import Html.Attributes exposing (href, target, class)
 import Debug
 
 import ElmFire exposing
@@ -33,7 +33,7 @@ type LogEntry
   = LogNone
   | LogTaskStart String
   | LogTaskSuccess String String
-  | LogTaskFail String String
+  | LogTaskFailure String String
   | LogResponse Response
 
 notes : Signal.Mailbox LogEntry
@@ -45,13 +45,37 @@ logEntries =
     notes.signal
     (Signal.map LogResponse responses)
 
-type alias Model = List LogEntry
+type alias LogList = List LogEntry
+type alias TaskList = List (String, LogEntry)
+
+type alias Model =
+  { log: LogList
+  , tasks: TaskList
+  }
 
 startModel : Model
-startModel = []
+startModel = { log = [], tasks = [] }
 
 progression : LogEntry -> Model -> Model
-progression note model = note :: model
+progression note model =
+  { model |
+      log <- note :: model.log
+    , tasks <-
+        case note of
+          LogTaskStart   step   -> replaceOrAppend step note model.tasks
+          LogTaskSuccess step _ -> replaceOrAppend step note model.tasks
+          LogTaskFailure step _ -> replaceOrAppend step note model.tasks
+          otherwise -> model.tasks
+  }
+
+replaceOrAppend : String -> LogEntry -> TaskList -> TaskList
+replaceOrAppend step note tasks =
+  case tasks of
+    [] -> [(step, note)]
+    (s1, n1) :: rest ->
+      if s1 == step
+        then (step, note) :: rest
+        else (s1, n1) :: replaceOrAppend step note rest
 
 state : Signal Model
 state = Signal.foldp progression startModel logEntries
@@ -59,14 +83,14 @@ state = Signal.foldp progression startModel logEntries
 view : Model -> Html
 view model =
   div []
-  [ div [style [("backgroundColor", "#AF7777")]] [text "ElmFire Test"]
-  , div [style [("backgroundColor", "#AFD7DB")]]
-    [ a [href url, target "_blank"] [text url] ]
-  , div [] (viewModel model)
+  [ h1  [] [text "ElmFire Test"]
+  , div [] [ a [href url, target "_blank"] [text url] ]
+  , div [class "tasks"] ( h2 [] [text "Tasks"] :: viewTasks model.tasks)
+  , div [class "logs"]  ( h2 [] [text "Log"] :: viewLog model.log )
   ]
 
-viewModel : Model -> List Html
-viewModel model = List.foldl -- reverse the list for display
+viewLog : LogList -> List Html
+viewLog log = List.foldl -- reverses the list for display
   (\entry htmlList ->
     let maybeHtml = viewLogEntry entry in
       case maybeHtml of
@@ -74,29 +98,43 @@ viewModel model = List.foldl -- reverse the list for display
         Just html -> html::htmlList
   )
   []
-  model
+  log
+
+viewTasks : TaskList -> List Html
+viewTasks = List.map
+  (\(step, logEntry) ->
+    div [class "line"]
+    [ span [] [text step]
+    , case logEntry of
+        LogTaskStart   _     -> span [class "started"] [text "..."]
+        LogTaskSuccess _ res -> span [class "success"] [text res]
+        LogTaskFailure _ err -> span [class "failure"] [text err]
+        otherwise            -> text ""
+
+    ]
+  )
 
 viewLogEntry : LogEntry -> Maybe Html
-viewLogEntry logEntry = case logEntry of
+viewLogEntry logEntry =
+  let
+    line c s t = div [class "line"] [ span [] [text s], span [class c] [text t] ]
+  in case logEntry of
   LogNone -> Nothing
   LogTaskStart step ->
-    Just <| div [style [("backgroundColor", "#EFD8B1")]] [text <| step ++ ". Started"]
+    Just <| line "started" step "started"
   LogTaskSuccess step res ->
-    Just <| div [style [("backgroundColor", "#EFD871")]] [text <| step ++ ". Success: " ++ res]
-  LogTaskFail step err ->
-    Just <| div [style [("backgroundColor", "#EFD8F1")]] [text <| step ++ ". Failure: " ++ err]
+    Just <| line "success" step res
+  LogTaskFailure step err ->
+    Just <| line "failure" step err
   LogResponse response ->
-    Just <| div [style [("backgroundColor", "#BCD693")]] [case response of
-      Data dataMsg -> viewDataMsg dataMsg
-      otherwise -> text ("no query response")
-    ]
+    Just <| case response of
+      Data dataMsg -> line "response" (toString dataMsg.queryId) (viewDataMsg dataMsg)
+      otherwise -> line "response" "response" "no dataMsg"
 
-viewDataMsg : DataMsg -> Html
+viewDataMsg : DataMsg -> String
 viewDataMsg dataMsg =
-  text <|
-    (toString dataMsg.queryId) ++ ": " ++
-    (Maybe.withDefault "(root)" dataMsg.key) ++ ": " ++
-    (Maybe.withDefault "no value" <| Maybe.map viewValue dataMsg.value)
+  (Maybe.withDefault "(root)" dataMsg.key) ++ ": " ++
+  (Maybe.withDefault "no value" <| Maybe.map viewValue dataMsg.value)
 
 viewValue : JE.Value -> String
 viewValue value = JE.encode 0 value
@@ -110,7 +148,7 @@ intercept valueToString step task =
   Signal.send notes.address (LogTaskStart step)
   `andThen` \_ ->
     ( task
-      `onError` \err -> Signal.send notes.address (LogTaskFail step (errorToString err))
+      `onError` \err -> Signal.send notes.address (LogTaskFailure step (errorToString err))
       `andThen` \_   -> fail err
     )
     `andThen` \val -> Signal.send notes.address (LogTaskSuccess step (valueToString val))
@@ -144,7 +182,8 @@ doUnsubscribe step queryId =
   intercept (always "done") step (unsubscribe queryId)
 
 doSleep : String -> Float -> Task () ()
-doSleep step seconds =
+doSleep id seconds =
+  let step = "sleep " ++ id ++ " for " ++ (toString seconds) ++ " seconds" in
   Signal.send notes.address (LogTaskStart step)
   `andThen` \_ -> sleep (seconds * Time.second)
   `andThen` \_ -> Signal.send notes.address (LogTaskSuccess step "awake")
@@ -159,10 +198,10 @@ andAnyway task1 task2 =
 
 port runTasks : Task () ()
 port runTasks =
-  doSubscribe "query1 valueChanged" valueChanged (location url)
+              doSubscribe "query1 value" valueChanged (location url)
   `andAnyway` (Task.spawn <| doSet "async set1 value" (JE.string "start") (location url))
-  `andAnyway` doSubscribe "query2 parent valueChanged" valueChanged (location url |> parent)
-  `andAnyway` doSleep "sleep 2 seconds" 2
+  `andAnyway` doSubscribe "query2 parent value" valueChanged (location url |> parent)
+  `andAnyway` doSleep "1" 2
   `andAnyway` doSet "set2 value" (JE.string "hello") (location url)
   `andAnyway` doOpen "open good" (location url)
   `andAnyway` doOpen "open bad" (location url |> parent |> parent)
@@ -170,14 +209,13 @@ port runTasks =
   `andAnyway` doSubscribe "query4 child changed" (child changed) (location url)
   `andAnyway` doSubscribe "query5 child removed" (child removed) (location url)
   `andAnyway` doSubscribe "query6 child moved" (child moved) (location url)
-  `andAnyway` doSleep "sleep 2 seconds" 2
+  `andAnyway` doSleep "2" 2
   `andAnyway` doSet "set3 object value"
       (JE.object [("a", (JE.string "hello")), ("b", (JE.string "Elm"))])
       (location url)
-  `andAnyway` doSleep "sleep 2 seconds" 2
+  `andAnyway` doSleep "3" 2
   `andAnyway` doSet "set4 add child" (JE.string "at Firebase") (location url |> sub "c")
-  `andAnyway` doSleep "sleep 2 seconds" 2
-  -- `andAnyway` doSubscribeAndCancel "subscribe and unsubscribe" valueChanged (location url)
+  `andAnyway` doSleep "4" 2
   `andAnyway` ( doSubscribe "subscribe" valueChanged (location url)
                 `andThen` \queryId -> doUnsubscribe "unsubscribe" queryId
               )
