@@ -12,12 +12,15 @@ import Task exposing (Task)
 import Json.Encode exposing (string, encode)
 
 import ElmFire exposing
-  ( location, set, subscribe, valueChanged, responses
+  ( location, set, subscribe, valueChanged
   , Response (..), QueryId, Error
   )
 
 -- You may want to change this url
 loc = "https://elmfire.firebaseio-demo.com/test"
+
+responses : Signal.Mailbox Response
+responses = Signal.mailbox NoResponse
 
 inputString : Mailbox String
 inputString = mailbox ""
@@ -28,7 +31,7 @@ port runSet = Signal.map
   inputString.signal
 
 port runQuery : Task Error QueryId
-port runQuery = subscribe valueChanged (location loc)
+port runQuery = subscribe responses.address valueChanged (location loc)
 
 view : Response -> Html
 view response =
@@ -54,4 +57,4 @@ view response =
     ]
   ]
 
-main = Signal.map view responses
+main = Signal.map view responses.signal

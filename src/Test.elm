@@ -18,7 +18,7 @@ import Debug
 
 import ElmFire exposing
   ( location, sub, parent, open
-  , set, remove, subscribe, unsubscribe, responses
+  , set, remove, subscribe, unsubscribe
   , valueChanged, child, added, changed, removed, moved
   , Ref, Query, Response (..), DataMsg, QueryId, Error (..)
   )
@@ -28,6 +28,10 @@ import ElmFire exposing
 url = "https://elmfire.firebaseio-demo.com/test"
 
 -------------------------------------------------------------------------------
+
+-- All query responses a reported through this mailbox
+responses : Signal.Mailbox Response
+responses = Signal.mailbox NoResponse
 
 type LogEntry
   = LogNone
@@ -43,7 +47,7 @@ logEntries : Signal LogEntry
 logEntries =
   Signal.merge
     notes.signal
-    (Signal.map LogResponse responses)
+    (Signal.map LogResponse responses.signal)
 
 type alias LogList = List LogEntry
 type alias TaskList = List (String, LogEntry)
@@ -175,7 +179,7 @@ doRemove step ref =
 
 doSubscribe : String -> Query -> Ref -> Task Error QueryId
 doSubscribe step query ref =
-  intercept toString step (subscribe query ref)
+  intercept toString step (subscribe responses.address query ref)
 
 doUnsubscribe : String -> QueryId -> Task Error ()
 doUnsubscribe step queryId =

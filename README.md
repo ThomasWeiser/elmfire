@@ -38,13 +38,13 @@ Example:
 
 ## Querying a Location
 
-`subscribe : Query -> Ref -> Task Error QueryId` Start a query for the value of the location. On success the task returns a QueryId, which can be used to match the corresponding responses.
+`subscribe : Address Response -> Query -> Ref -> Task Error QueryId` Start a query for the value of the location. On success the task returns a QueryId, which can be used to match the corresponding responses.
 
-The first parameter specifies the event to listen to: `valueChanged`, `child added`, `child changed`, `child removed` or `child moved`.
+The first parameter is the address of a mailbox that receives the responses.
 
-All query responses a reported through the signal `responses`:
+The second parameter specifies the event to listen to: `valueChanged`, `child added`, `child changed`, `child removed` or `child moved`.
 
-`responses : Signal Response`
+The third parameter references the queried location.
 
 `type Response = NoResponse | Data DataMsg | QueryCanceled QueryId String`
 
@@ -57,7 +57,7 @@ A `DataMsg` carries the corresponding `QueryId` and `Just Value` for the Json va
 Example:
 
     port query : Task Error QueryId
-    port query = subscribe valueChanged ref
+    port query = subscribe responses.address valueChanged ref
     
     ... = Signal.map
             (\response -> case response of

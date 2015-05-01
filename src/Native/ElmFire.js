@@ -98,9 +98,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		return 'q' + ++qNum;
 	}
 
-	var responses = Signal.input ('ElmFire.responses', { ctor: 'NoResponse' });
-
-	function subscribe (query, elmRef) {
+	function subscribe (responseAddress, query, elmRef) {
 		return Task .asyncFunction (function (callback) {
 			deref = getRef (elmRef);
 			if ('ref' in deref) {
@@ -128,7 +126,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 						}
 					};
 					setTimeout (function () {
-						localRuntime .notify (responses.id, res);
+						Task.perform (responseAddress._0 (res));
 					}, 0);
 				};
 				var onCancel = function (err) {
@@ -138,7 +136,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 						_1: err .toString ()
 					};
 					setTimeout (function () {
-						localRuntime .notify (responses.id, res);
+						Task.perform (responseAddress._0 (res));
 					}, 0);
 				};
 				eventType = 'badQuery';
@@ -181,9 +179,8 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		open: open,
 		set: F2(set),
 		remove: remove,
-		subscribe: F2(subscribe),
-		unsubscribe: unsubscribe,
-		responses: responses
+		subscribe: F3(subscribe),
+		unsubscribe: unsubscribe
 	};
 };
 

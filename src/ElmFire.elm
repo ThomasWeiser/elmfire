@@ -5,7 +5,6 @@ module ElmFire
   , Response (..)
   , DataMsg
   , Error (..)
-  , responses
   , location, sub, parent
   , open, set, remove, subscribe, unsubscribe
   , valueChanged, child, added, changed, removed, moved
@@ -142,12 +141,9 @@ On success the task returns a QueryId,
 which can be used to match the corresponding responses
 and to cancel the query.
 
-The query results are reported via the signal `responses`.
+The query results are reported via a mailbox. The addressee is given as first parameter.
 -}
--- subscribe : Address Response -> Query -> Ref -> Task Error QueryId
--- TODO: Don't respond via the global signal `responses`.
---       The addressee should be given as an argument.
-subscribe : Query -> Ref -> Task Error QueryId
+subscribe : Signal.Address Response -> Query -> Ref -> Task Error QueryId
 subscribe = Native.ElmFire.subscribe
 
 {-| Cancel a query subscription -}
@@ -177,9 +173,3 @@ removed = Removed
 {-| Query child moved -}
 moved : ChildQuery
 moved = Moved
-
-{-| All query responses a reported through this signal `responses`.
-See the documentation of type `Response` for details.
--}
-responses : Signal Response
-responses = Native.ElmFire.responses
