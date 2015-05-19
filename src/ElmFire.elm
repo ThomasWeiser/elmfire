@@ -28,6 +28,7 @@ module ElmFire
 @docs Error
 -}
 
+import Native.Firebase
 import Native.ElmFire
 import Json.Encode as JE
 import Signal exposing (Address)
