@@ -70,18 +70,23 @@ See `Example.elm` for working code that handles `responses`.
 
 ## Example.elm
 
-There is a very basic example app. To build it:
+There is a very basic example app in `example/src/Example.elm`. To build it:
 
-    elm-package install evancz/elm-html 3.0.0
-    elm-make --output Example.html Example.elm
+    cd example
+    make all open
+    
+Alternatively without using `make`:
+
+    cd example
+    elm make --output Example.html src/Example.elm
 
 Prior to building you may want to put your own Firebase URL in it.
 
 ## Test.elm
 
-I started a testing app. It runs a given sequence of tasks on the Firebase API and logs these steps along with the query results.
+I started a testing app, living in `test/src`. It runs a given sequence of tasks on the Firebase API and logs these steps along with the query results.
 
-There is a Makefile to build the app. On most Unix-like systems a `make all open` should do the trick.
+There is a Makefile to build the app. On most Unix-like systems a `cd test; make all open` should do the trick.
 
 ## Future work
 

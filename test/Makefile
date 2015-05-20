@@ -30,7 +30,7 @@ open:
 	xdg-open $(BUILD_DIR)/$(BROWSER_TARGET) 2>/dev/null
 
 static: # : $(BUILD_DIR)/% : $(SOURCE_DIR)/%  $(BUILD_DIR)
-	rsync -rpE $(STATIC_SOURCES) $(BUILD_DIR)
+	rsync -rpE --ignore-missing-args stopgap $(STATIC_SOURCES) $(BUILD_DIR)
 
 $(BUILD_DIR):
 	mkdir $(BUILD_DIR)
