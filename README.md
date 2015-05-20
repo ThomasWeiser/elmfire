@@ -6,39 +6,39 @@ This is work in progress. We aim to expose the complete [Firebase API](https://w
 
 ## Constructing Firebase References
 
-To refer to a Firebase location you need a `Ref`, which can be built by the following functions:
+To refer to a Firebase location you need a `Location`, which can be built by the following functions:
 
-`location: String -> Ref` Construct a new reference from a full Firebase URL.
+`fromUrl: String -> Location` Construct a new reference from a full Firebase URL.
 
-`sub: String -> Ref -> Ref` Go down a path from a given location to a descendant location.
+`sub: String -> Location -> Location` Go down a path from a given location to a descendant location.
 
-`parent: Ref -> Ref` Go up to the parent location.
+`parent: Location -> Location` Go up to the parent location.
 
 Example:
 
-    ref : Ref
-    ref = location "https://elmfire.firebaseio-demo.com/test"
-            |> parent
-            |> sub "anotherTest"`
+    location : Location
+    location = fromUrl "https://elmfire.firebaseio-demo.com/test"
+                 |> parent
+                 |> sub "anotherTest"`
 
 These three function are pure. They don't touch a real Firebase until they are used in one of the tasks outlined below.
 
 ## Writing a Value
 
-`set : Value -> Ref -> Task Error ()` Write a Json value to the referenced Firebase location.
+`set : Value -> Location -> Task Error ()` Write a Json value to the referenced Firebase location.
 
-The task completes with `()` when synchronization to the Firebase servers has completed. The task may result in an error if the ref is invalid or you have no permission to write the data.
+The task completes with `()` when synchronization to the Firebase servers has completed. The task may result in an error if the location is invalid or you have no permission to write the data.
 
 Example:
 
     port write : Task Error ()
-    port write = set (Json.Encode.string "foo") ref
+    port write = set (Json.Encode.string "foo") location
     
-`remove : Ref -> Task Error ()` Remove the data at the referenced Firebase location.
+`remove : Location -> Task Error ()` Remove the data at the referenced Firebase location.
 
 ## Querying a Location
 
-`subscribe : Address Response -> Query -> Ref -> Task Error QueryId` Start a query for the value of the location. On success the task returns a QueryId, which can be used to match the corresponding responses.
+`subscribe : Address Response -> Query -> Location -> Task Error QueryId` Start a query for the value of the location. On success the task returns a QueryId, which can be used to match the corresponding responses.
 
 The first parameter is the address of a mailbox that receives the responses.
 
@@ -60,7 +60,7 @@ Example:
     responses = Signal.mailbox NoResponse
     
     port query : Task Error QueryId
-    port query = subscribe responses.address valueChanged ref
+    port query = subscribe responses.address valueChanged location
     
     ... = Signal.map
             (\response -> case response of

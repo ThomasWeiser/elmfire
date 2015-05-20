@@ -17,10 +17,10 @@ import Html.Attributes exposing (href, target, class)
 import Debug
 
 import ElmFire exposing
-  ( location, sub, parent, open
+  ( fromUrl, sub, parent, root, open
   , set, remove, subscribe, unsubscribe
   , valueChanged, child, added, changed, removed, moved
-  , Ref, Query, Response (..), DataMsg, QueryId, Error (..)
+  , Location, Query, Response (..), DataMsg, QueryId, Error (..)
   )
 
 -------------------------------------------------------------------------------
@@ -165,21 +165,21 @@ errorToString error =
 
 -------------------------------------------------------------------------------
 
-doOpen : String -> Ref -> Task Error Ref
-doOpen step ref =
-  intercept toString step (open ref)
+doOpen : String -> Location -> Task Error Location
+doOpen step location =
+  intercept toString step (open location)
 
-doSet : String -> JE.Value -> Ref -> Task Error ()
-doSet step value ref =
-  intercept (always "synced") step (set value ref)
+doSet : String -> JE.Value -> Location -> Task Error ()
+doSet step value location =
+  intercept (always "synced") step (set value location)
 
-doRemove : String -> Ref -> Task Error ()
-doRemove step ref =
-  intercept (always "synced") step (remove ref)
+doRemove : String -> Location -> Task Error ()
+doRemove step location =
+  intercept (always "synced") step (remove location)
 
-doSubscribe : String -> Query -> Ref -> Task Error QueryId
-doSubscribe step query ref =
-  intercept toString step (subscribe responses.address query ref)
+doSubscribe : String -> Query -> Location -> Task Error QueryId
+doSubscribe step query location =
+  intercept toString step (subscribe responses.address query location)
 
 doUnsubscribe : String -> QueryId -> Task Error ()
 doUnsubscribe step queryId =
@@ -202,26 +202,28 @@ andAnyway task1 task2 =
 
 port runTasks : Task () ()
 port runTasks =
-              doSubscribe "query1 value" valueChanged (location url)
-  `andAnyway` (Task.spawn <| doSet "async set1 value" (JE.string "start") (location url))
-  `andAnyway` doSubscribe "query2 parent value" valueChanged (location url |> parent)
+  let loc = fromUrl url in
+              doSubscribe "query1 value" valueChanged loc
+  `andAnyway` (Task.spawn <| doSet "async set1 value" (JE.string "start") loc)
+  `andAnyway` doSubscribe "query2 parent value" valueChanged (loc |> parent)
   `andAnyway` doSleep "1" 2
-  `andAnyway` doSet "set2 value" (JE.string "hello") (location url)
-  `andAnyway` doOpen "open good" (location url)
-  `andAnyway` doOpen "open bad" (location url |> parent |> parent)
-  `andAnyway` doSubscribe "query3 child added" (child added) (location url)
-  `andAnyway` doSubscribe "query4 child changed" (child changed) (location url)
-  `andAnyway` doSubscribe "query5 child removed" (child removed) (location url)
-  `andAnyway` doSubscribe "query6 child moved" (child moved) (location url)
+  `andAnyway` doSet "set2 value" (JE.string "hello") loc
+  `andAnyway` doOpen "open good" loc
+  `andAnyway` doOpen "root" (loc |> root)
+  `andAnyway` doOpen "open bad" (loc |> root |> parent)
+  `andAnyway` doSubscribe "query3 child added" (child added) loc
+  `andAnyway` doSubscribe "query4 child changed" (child changed) loc
+  `andAnyway` doSubscribe "query5 child removed" (child removed) loc
+  `andAnyway` doSubscribe "query6 child moved" (child moved) loc
   `andAnyway` doSleep "2" 2
   `andAnyway` doSet "set3 object value"
       (JE.object [("a", (JE.string "hello")), ("b", (JE.string "Elm"))])
-      (location url)
+      loc
   `andAnyway` doSleep "3" 2
-  `andAnyway` doSet "set4 add child" (JE.string "at Firebase") (location url |> sub "c")
+  `andAnyway` doSet "set4 add child" (JE.string "at Firebase") (loc |> sub "c")
   `andAnyway` doSleep "4" 2
-  `andAnyway` ( doSubscribe "subscribe" valueChanged (location url)
+  `andAnyway` ( doSubscribe "subscribe" valueChanged loc
                 `andThen` \queryId -> doUnsubscribe "unsubscribe" queryId
               )
-  `andAnyway` doRemove "remove child" (location url |> sub "b")
+  `andAnyway` doRemove "remove child" (loc |> sub "b")
   `andAnyway` succeed ()

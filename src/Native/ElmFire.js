@@ -15,51 +15,53 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 	var Task = Elm.Native.Task.make (localRuntime);
 	var Utils = Elm.Native.Utils.make (localRuntime);
 
-	function getRefUnsafe (elmRef) {
-		var rawRef;
-		if (elmRef.ctor === 'LocationRef') {
-			rawRef = new Firebase (elmRef._0);
-		} else if (elmRef.ctor === 'SubRef') {
-			rawRef = getRefUnsafe (elmRef._1) .child (elmRef._0);
-		} else if (elmRef.ctor === 'ParentRef') {
-			rawRef = getRefUnsafe (elmRef._0) .parent ();
-			if (! rawRef) { throw ("no parent"); }
-		} else if (elmRef.ctor === 'RawRef') {
-			rawRef = elmRef._0;
+	function getRefUnsafe (location) {
+		var ref;
+		if (location.ctor === 'UrlLocation') {
+			ref = new Firebase (location._0);
+		} else if (location.ctor === 'SubLocation') {
+			ref = getRefUnsafe (location._1) .child (location._0);
+		} else if (location.ctor === 'ParentLocation') {
+			ref = getRefUnsafe (location._0) .parent ();
+			if (! ref) { throw ("no parent"); }
+		} else if (location.ctor === 'RootLocation') {
+			ref = getRefUnsafe (location._0) .root ();
+		} else if (location.ctor === 'RefLocation') {
+			ref = location._0;
 		}
-		if (! rawRef) {
-			throw ("bad ref (should not happen)");
+		if (! ref) {
+			throw ("Bad Firebase reference (should not happen)");
 		}
-		return rawRef;
+		return ref;
 	}
 
-	function getRef (elmRef) {
-		var rawRef;
+	function getRef (location) {
+		var ref;
 		try {
-			rawRef = getRefUnsafe (elmRef);
+			ref = getRefUnsafe (location);
 		}
 		catch (exception) {
 			return {error: "FireElm: " + exception.toString ()};
 		}
-		return {ref: rawRef};
+		return {ref: ref};
 	}
 
-	function open (elmRef) {
+	function open (location) {
 		return Task .asyncFunction (function (callback) {
-			deref = getRef (elmRef);
-			if ('ref' in deref) {
-				callback (Task.succeed ({ ctor: 'RawRef', _0: deref.ref }));
+			locRef = getRef (location);
+			if ('ref' in locRef) {
+				callback (Task.succeed ({ ctor: 'RefLocation', _0: locRef.ref }));
 			} else {
-				callback (Task.fail ({ ctor: 'FirebaseError', _0: deref.error }));
+				callback (Task.fail ({ ctor: 'FirebaseError', _0: locRef.error }));
 			}
 		});
 	}
 
-	function set (value, elmRef) {
+	function set (value, location) {
 		return Task .asyncFunction (function (callback) {
-			deref = getRef (elmRef);
-			if ('ref' in deref) {
-				deref.ref.set (value, function (err) {
+			locRef = getRef (location);
+			if ('ref' in locRef) {
+				locRef.ref.set (value, function (err) {
 					if (err) {
 						callback (Task.fail ({ ctor: 'FirebaseError', _0: err.toString () }));
 					} else {
@@ -68,16 +70,16 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 				});
 			}
 			else {
-				callback (Task.fail ({ ctor: 'FirebaseError', _0: deref.error }));
+				callback (Task.fail ({ ctor: 'FirebaseError', _0: locRef.error }));
 			}
 		});
 	}
 
-	function remove (elmRef) {
+	function remove (location) {
 		return Task .asyncFunction (function (callback) {
-			deref = getRef (elmRef);
-			if ('ref' in deref) {
-				deref.ref.remove (function (err) {
+			locRef = getRef (location);
+			if ('ref' in locRef) {
+				locRef.ref.remove (function (err) {
 					if (err) {
 						callback (Task.fail ({ ctor: 'FirebaseError', _0: err.toString () }));
 					} else {
@@ -86,7 +88,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 				});
 			}
 			else {
-				callback (Task.fail ({ ctor: 'FirebaseError', _0: deref.error }));
+				callback (Task.fail ({ ctor: 'FirebaseError', _0: locRef.error }));
 			}
 		});
 	}
@@ -98,10 +100,10 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		return 'q' + ++qNum;
 	}
 
-	function subscribe (responseAddress, query, elmRef) {
+	function subscribe (responseAddress, query, location) {
 		return Task .asyncFunction (function (callback) {
-			deref = getRef (elmRef);
-			if ('ref' in deref) {
+			locRef = getRef (location);
+			if ('ref' in locRef) {
 				var queryId = nextQueryId ();
 				var onResponse = function (snapshot) {
 					var val = snapshot .val (), maybeVal;
@@ -151,15 +153,15 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 					}
 				}
 				queries [queryId] = {
-					ref: deref.ref,
+					ref: locRef.ref,
 					eventType: eventType,
 					callback: onResponse
 				};
-				deref.ref.on (eventType, onResponse, onCancel);
+				locRef.ref.on (eventType, onResponse, onCancel);
 				callback (Task.succeed (queryId));
 			}
 			else {
-				callback (Task.fail ({ ctor: 'FirebaseError', _0: deref.error }));
+				callback (Task.fail ({ ctor: 'FirebaseError', _0: locRef.error }));
 			}
 		});
 	}

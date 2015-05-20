@@ -1,19 +1,19 @@
 module ElmFire
-  ( Ref
+  ( Location
   , Query
   , QueryId
   , Response (..)
   , DataMsg
   , Error (..)
-  , location, sub, parent
+  , fromUrl, sub, parent, root
   , open, set, remove, subscribe, unsubscribe
   , valueChanged, child, added, changed, removed, moved
   ) where
 
 {-| Elm bindings to Firebase.
 
-# References to a Firebase location
-@docs Ref, location, sub, parent, open
+# Firebase locations
+@docs Location, fromUrl, sub, parent, root, open
 
 # Writing
 @docs set, remove
@@ -37,15 +37,21 @@ import Task exposing (Task)
 {-| Errors reported from Firebase -}
 type Error = FirebaseError String
 
-{-| A reference to a Firebase location. This is an opaque type.
-References are constructed with the function `location`, `sub`,
-`parent` and by running the `open` task.
+{-| A Firebase location, that represents a path into a firebase.
+
+A location can be constructed or obtained from
+- an absolute path by `fromUrl`
+- relative to another location by `sub`, `parent` and `root`
+
+Locations are generally unvalidated until their use in a task.
+The constructor functions are pure.
 -}
-type Ref
-  = LocationRef String
-  | SubRef String Ref
-  | ParentRef Ref
-  | RawRef
+type Location
+  = UrlLocation String
+  | SubLocation String Location
+  | ParentLocation Location
+  | RootLocation Location
+  | RefLocation
 
 {-| Specifies the event this query listens to (valueChanged, child added, ...) -}
 type Query
@@ -78,59 +84,66 @@ type alias DataMsg =
   , value: Maybe JE.Value
   }
 
-{-| Construct a new reference from a full Firebase URL.
+{-| Construct a new location from a full Firebase URL.
 
-    ref = location "https://elmfire.firebaseio-demo.com/"
+    location = fromUrl "https://elmfire.firebaseio-demo.com/"
 -}
-location : String -> Ref
-location = LocationRef
+fromUrl : String -> Location
+fromUrl = UrlLocation
 
-{-| Construct a reference for the descendant at the specified relative path.
+{-| Construct a location for the descendant at the specified relative path.
 
-    refUsers = sub "users" ref
+    locUsers = sub "users" location
 -}
-sub : String -> Ref -> Ref
-sub = SubRef
+sub : String -> Location -> Location
+sub = SubLocation
 
-{-| Construct a reference to the parent location.
+{-| Construct the parent location from a child location.
 
-    ref2 = parent ref1
+    loc2 = parent loc1
 -}
-parent : Ref -> Ref
-parent = ParentRef
+parent : Location -> Location
+parent = ParentLocation
 
-{-| Actually open a reference and give an internal representation of that reference.
+{-| Construct the root location from descendant location
 
-It's generally not necessary to explicitly open a constructed reference.
-It can be used to check the reference and to cache Firebase references.
+    loc2 = root loc1
+-}
+root : Location -> Location
+root = RootLocation
 
-The task fails if the refence construct is invalid.
+{-| Actually open a location and give an internal representation of that reference.
+
+It's generally not necessary to explicitly open a constructed location.
+It can be used to check the location and to cache Firebase references.
+
+The task fails if the location construct is invalid.
 
     openTask =
-      (open <| sub user <| location "https://elmfire.firebaseio-demo.com/users")
-      `andThen` Signal.send refs.address
+      (open <| sub user <| fromUrl "https://elmfire.firebaseio-demo.com/users")
+      `andThen` Signal.send locationCache.address
 -}
-open : Ref -> Task Error Ref
+open : Location -> Task Error Location
 open = Native.ElmFire.open
 
 {-| Write a Json value to a Firebase location.
 
 The task completes with `()` when
 synchronization to the Firebase servers has completed.
-The task may result in an error if the ref is invalid
+The task may result in an error if the location is invalid
 or you have no permission to write this data.
 -}
-set : JE.Value -> Ref -> Task Error ()
+set : JE.Value -> Location -> Task Error ()
 set = Native.ElmFire.set
 
 {-| Delete a Firebase location.
 
 The task completes with `()` when
 synchronization to the Firebase servers has completed.
-The task may result in an error if the ref is invalid
+The task may result in an error if the location is invalid
 or you have no permission to remove this data.
 -}
-remove : Ref -> Task Error ()
+remove : Location -> Task Error ()
 remove = Native.ElmFire.remove
 
 {-| Query a Firebase location.
@@ -144,7 +157,7 @@ and to cancel the query.
 
 The query results are reported via a mailbox. The addressee is given as first parameter.
 -}
-subscribe : Signal.Address Response -> Query -> Ref -> Task Error QueryId
+subscribe : Signal.Address Response -> Query -> Location -> Task Error QueryId
 subscribe = Native.ElmFire.subscribe
 
 {-| Cancel a query subscription -}
