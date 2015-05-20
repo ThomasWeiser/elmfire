@@ -56,6 +56,9 @@ A `DataMsg` carries the corresponding `QueryId` and `Just Value` for the Json va
 
 Example:
 
+    responses : Signal.Mailbox Response
+    responses = Signal.mailbox NoResponse
+    
     port query : Task Error QueryId
     port query = subscribe responses.address valueChanged ref
     
@@ -64,7 +67,7 @@ Example:
                 Data dataMsg -> ...
                 otherwise -> ...
             )
-            responses
+            responses.signal
     
 See `Example.elm` for working code that handles `responses`.
 
