@@ -2,17 +2,24 @@
 
 Use the Firebase API in Elm.
 
-This is work in progress. We aim to expose the complete [Firebase API](https://www.firebase.com/docs/web/). Currently only basic value setting and removing are supported as well as querying without filtering and sorting.
+This is work in progress.
+We aim to expose the complete [Firebase API](https://www.firebase.com/docs/web/).
 
-## Constructing Firebase References
+## Constructing Firebase Locations
 
-To refer to a Firebase location you need a `Location`, which can be built by the following functions:
+To refer to a Firebase location you need a `Location`.
+Locations can be built with the following functions:
 
-`fromUrl: String -> Location` Construct a new reference from a full Firebase URL.
-
-`sub: String -> Location -> Location` Go down a path from a given location to a descendant location.
-
-`parent: Location -> Location` Go up to the parent location.
+    -- Location is an opaque type.
+    fromUrl  : String -> Location
+    sub      : String -> Location -> Location
+    parent   : Location -> Location
+    root     : Location -> Location
+    push     : Location -> Location
+    location : Reference -> Location
+            
+These are all pure functions.
+They don't touch a real Firebase until the resulting location is used in one of the tasks outlined below.
 
 Example:
 
@@ -20,39 +27,71 @@ Example:
     location = fromUrl "https://elmfire.firebaseio-demo.com/test"
                  |> parent
                  |> sub "anotherTest"`
+                 |> push
 
-These three function are pure. They don't touch a real Firebase until they are used in one of the tasks outlined below.
+## References to Locations
 
-## Writing a Value
+Many actions on a Firebase location return a reference to that location in their results.
+Likewise, query results contains a reference to the location of the reported value.
 
-`set : Value -> Location -> Task Error ()` Write a Json value to the referenced Firebase location.
+References can inform about the key or the complete URL of the referred location.
+And a reference may be converted back to a location, which can be used for a new task.
 
-The task completes with `()` when synchronization to the Firebase servers has completed. The task may result in an error if the location is invalid or you have no permission to write the data.
+Additionally, a location can be opened (without modifying or querying),
+which results in a reference if the location is valid.
+It's generally not necessary to explicitly open a constructed location,
+but it may be used to check the location or to cache Firebase references.
+
+    -- Reference is an opaque type
+    key      : Reference -> String
+    toUrl    : Reference -> String
+    location : Reference -> Location
+    open     : Location -> Task Error Reference
+
+## Modifying Values
+
+    set             : Value -> Location -> Task Error Reference
+    setWithPriority : Value -> Priority -> Location -> Task Error Reference
+    setPriority     : Priority -> Location -> Task Error Reference
+    update          : Value -> Location -> Task Error Reference
+    remove          : Location -> Task Error Reference
+
+These tasks complete when synchronization to the Firebase servers has completed.
+They result in a Reference to the modified location.
+A task may result in an error if the location is invalid or you have no permission to modify the data.
+
+Values are given as Json values, i.e. `Json.Encode.Value`.
 
 Example:
 
     port write : Task Error ()
     port write = set (Json.Encode.string "foo") location
     
-`remove : Location -> Task Error ()` Remove the data at the referenced Firebase location.
+## Querying
 
-## Querying a Location
+Only basic querying is supported in this early version of ElmFire, so no filtering, no sorting, no `once`.
 
-`subscribe : Address Response -> Query -> Location -> Task Error QueryId` Start a query for the value of the location. On success the task returns a QueryId, which can be used to match the corresponding responses.
-
+    subscribe : Address Response -> Query -> Location -> Task Error QueryId
+    unsubscribe : QueryId -> Task Error ()
+    
+Use `subscribe` to start a querying the value(s) at a location.
+ 
 The first parameter is the address of a mailbox that receives the responses.
-
 The second parameter specifies the event to listen to: `valueChanged`, `child added`, `child changed`, `child removed` or `child moved`.
-
 The third parameter references the queried location.
+On success the task returns a QueryId, which can be used to match the corresponding responses and to cancel the query.
 
-`type Response = NoResponse | Data DataMsg | QueryCanceled QueryId String`
-
-`type alias DataMsg = { queryId: QueryId, key: String, value: Maybe Value }`
+    type Response = NoResponse | Data DataMsg | QueryCanceled QueryId String
+    type alias DataMsg =
+      { queryId: QueryId
+      , key: String
+      , reference: Reference
+      , value: Maybe Value
+      }
 
 A response is either a `DataMsg` or a `QueryCanceled`.
-
-A `DataMsg` carries the corresponding `QueryId` and `Just Value` for the Json value or `Nothing` if the location doesn't exist. The `key` corresponds to the last part of the path. It is the empty string for the root.
+A `DataMsg` carries the corresponding `QueryId` and `Just Value` for the Json value or `Nothing` if the location doesn't exist.
+The `key` corresponds to the last part of the path. It is the empty string for the root.
 
 Example:
 
@@ -60,7 +99,7 @@ Example:
     responses = Signal.mailbox NoResponse
     
     port query : Task Error QueryId
-    port query = subscribe responses.address valueChanged location
+    port query = subscribe responses.address valueChanged (fromUrl "https:...firebaseio.com/...")
     
     ... = Signal.map
             (\response -> case response of
@@ -69,7 +108,11 @@ Example:
             )
             responses.signal
     
-See `Example.elm` for working code that handles `responses`.
+Notes for possible changes of the API:
+
+- The `key` field may be dropped, as the reference also contains the key.
+- Currently, query results are reported to a mailbox.
+  Alternatively, query results may be reported by running a given task.
 
 ## Example.elm
 
@@ -95,8 +138,8 @@ There is a Makefile to build the app. On most Unix-like systems a `cd test; make
 
 There are a lot of features I plan to add in the near future:
 
-* Writing to Firebase: `push`, `update`
 * Querying: `once`, filtering and sorting
+* Transactions
 * Authentication
 * Better test app
 * A nice example app

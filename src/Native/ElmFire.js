@@ -26,6 +26,8 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 			if (! ref) { throw ("no parent"); }
 		} else if (location.ctor === 'RootLocation') {
 			ref = getRefUnsafe (location._0) .root ();
+		} else if (location.ctor === 'PushLocation') {
+			ref = getRefUnsafe (location._0) .push ();
 		} else if (location.ctor === 'RefLocation') {
 			ref = location._0;
 		}
@@ -50,6 +52,14 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		return reference .toString ();
 	}
 
+	function key (reference) {
+		var key = reference .key ();
+		if (key === null) {
+			key = '';
+		}
+		return key;
+	}
+
 	function open (location) {
 		return Task .asyncFunction (function (callback) {
 			locRef = getRef (location);
@@ -69,7 +79,63 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 					if (err) {
 						callback (Task.fail ({ ctor: 'FirebaseError', _0: err.toString () }));
 					} else {
-						callback (Task.succeed (Utils.Tuple0));
+						callback (Task.succeed (locRef.ref));
+					}
+				});
+			}
+			else {
+				callback (Task.fail ({ ctor: 'FirebaseError', _0: locRef.error }));
+			}
+		});
+	}
+
+	function setWithPriority (value, priority, location) {
+		return Task .asyncFunction (function (callback) {
+			locRef = getRef (location);
+			if ('ref' in locRef) {
+				var prio = priority.ctor === 'NoPrio' ? null : priority._0;
+				locRef.ref.setWithPriority (value, prio, function (err) {
+					if (err) {
+						callback (Task.fail ({ ctor: 'FirebaseError', _0: err.toString () }));
+					} else {
+						callback (Task.succeed (locRef.ref));
+					}
+				});
+			}
+			else {
+				callback (Task.fail ({ ctor: 'FirebaseError', _0: locRef.error }));
+			}
+		});
+	}
+
+	function setPriority (priority, location) {
+		return Task .asyncFunction (function (callback) {
+			locRef = getRef (location);
+			if ('ref' in locRef) {
+				var prio = priority.ctor === 'NoPrio' ? null : priority._0;
+				locRef.ref.setPriority (prio, function (err) {
+					if (err) {
+						callback (Task.fail ({ ctor: 'FirebaseError', _0: err.toString () }));
+					} else {
+						callback (Task.succeed (locRef.ref));
+					}
+				});
+			}
+			else {
+				callback (Task.fail ({ ctor: 'FirebaseError', _0: locRef.error }));
+			}
+		});
+	}
+
+	function update (value, location) {
+		return Task .asyncFunction (function (callback) {
+			locRef = getRef (location);
+			if ('ref' in locRef) {
+				locRef.ref.update (value, function (err) {
+					if (err) {
+						callback (Task.fail ({ ctor: 'FirebaseError', _0: err.toString () }));
+					} else {
+						callback (Task.succeed (locRef.ref));
 					}
 				});
 			}
@@ -87,7 +153,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 					if (err) {
 						callback (Task.fail ({ ctor: 'FirebaseError', _0: err.toString () }));
 					} else {
-						callback (Task.succeed (Utils.Tuple0));
+						callback (Task.succeed (locRef.ref));
 					}
 				});
 			}
@@ -126,6 +192,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 							_: {},
 							queryId: queryId,
 							key: key,
+							reference: snapshot .ref (),
 							value: maybeVal
 						}
 					};
@@ -181,8 +248,12 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 	}
 	return localRuntime.Native.ElmFire.values = {
 		toUrl: toUrl,
+		key: key,
 		open: open,
 		set: F2(set),
+		setWithPriority: F3(setWithPriority),
+		setPriority: F2(setPriority),
+		update: F2(update),
 		remove: remove,
 		subscribe: F3(subscribe),
 		unsubscribe: unsubscribe

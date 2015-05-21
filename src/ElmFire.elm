@@ -1,13 +1,15 @@
 module ElmFire
   ( Location
   , Reference
+  , Priority (..)
   , Query
   , QueryId
   , Response (..)
   , DataMsg
   , Error (..)
-  , fromUrl, sub, parent, root, location, toUrl
-  , open, set, remove, subscribe, unsubscribe
+  , fromUrl, sub, parent, root, push, location, toUrl, key
+  , open, set, setWithPriority, setPriority, update, remove
+  , subscribe, unsubscribe
   , valueChanged, child, added, changed, removed, moved
   ) where
 
@@ -20,7 +22,7 @@ module ElmFire
 @docs Reference, open, location
 
 # Writing
-@docs set, remove
+@docs set, update, remove
 
 # Querying
 @docs Query, QueryId, subscribe, unsubscribe, valueChanged, child, added, changed, removed, moved
@@ -56,13 +58,23 @@ type Location
   | SubLocation String Location
   | ParentLocation Location
   | RootLocation Location
+  | PushLocation Location
   | RefLocation Reference
 
 {-| A Firebase reference, which is a opaque type that represents a opened path.
 
-References are returned from some Firebase actions, notably in query results.
+References are returned from many Firebase tasks as well as in query results.
 -}
 type Reference = Reference
+
+{- Each existing location in a Firebase may be attributed with a priority that can be a number or a string.
+
+Priorities can be used to filter and to sort entries.
+-}
+type Priority
+  = NoPrio
+  | NumPrio Float
+  | StrPrio String
 
 {-| Specifies the event this query listens to (valueChanged, child added, ...) -}
 type Query
@@ -92,6 +104,7 @@ or it is `Nothing` when the queried location doesn't exist.
 type alias DataMsg =
   { queryId: QueryId
   , key: String
+  , reference: Reference
   , value: Maybe JE.Value
   }
 
@@ -123,6 +136,17 @@ parent = ParentLocation
 root : Location -> Location
 root = RootLocation
 
+{-| Construct a new child location using a generated key.
+
+The unique key generated is prefixed with a client-generated timestamp so that the resulting list will be chronologically-sorted.
+
+You may `open` the location or use the result of `set` to get the generated key.
+
+    open (push loc) `andThen` Signal.send mailboxToReceiveKey.address
+-}
+push : Location -> Location
+push = PushLocation
+
 {-| Obtain a location from a reference.
 
     reference = location location
@@ -130,12 +154,19 @@ root = RootLocation
 location : Reference -> Location
 location = RefLocation
 
-{-| Get the url of a reference.
--}
+{-| Get the url of a reference. -}
 toUrl : Reference -> String
 toUrl = Native.ElmFire.toUrl
 
-{-| Actually open a location and give an internal representation of that reference.
+{-| Get the key of a reference.
+
+The last token in a Firebase location is considered its key.
+For a refernce to the root key will return the empty string.
+-}
+key : Reference -> String
+key = Native.ElmFire.key
+
+{-| Actually open a location, which results in a reference (if the location is valid).
 
 It's generally not necessary to explicitly open a constructed location.
 It can be used to check the location and to cache Firebase references.
@@ -156,8 +187,30 @@ synchronization to the Firebase servers has completed.
 The task may result in an error if the location is invalid
 or you have no permission to write this data.
 -}
-set : JE.Value -> Location -> Task Error ()
+set : JE.Value -> Location -> Task Error Reference
 set = Native.ElmFire.set
+
+{-| Write a Json value to a Firebase location and specify a priority for that data.
+-}
+setWithPriority : JE.Value -> Priority -> Location -> Task Error Reference
+setWithPriority = Native.ElmFire.setWithPriority
+
+{-| Set a priority for the data at a Firebase location.
+-}
+setPriority : Priority -> Location -> Task Error Reference
+setPriority = Native.ElmFire.setPriority
+
+{-| Write the children in a Json value to a Firebase location.
+
+This will overwrite only children present in the first parameter and will leave others untouched.
+
+The task completes with `()` when
+synchronization to the Firebase servers has completed.
+The task may result in an error if the location is invalid
+or you have no permission to write this data.
+-}
+update : JE.Value -> Location -> Task Error Reference
+update = Native.ElmFire.update
 
 {-| Delete a Firebase location.
 
@@ -166,7 +219,7 @@ synchronization to the Firebase servers has completed.
 The task may result in an error if the location is invalid
 or you have no permission to remove this data.
 -}
-remove : Location -> Task Error ()
+remove : Location -> Task Error Reference
 remove = Native.ElmFire.remove
 
 {-| Query a Firebase location.

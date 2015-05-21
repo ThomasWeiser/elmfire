@@ -17,10 +17,10 @@ import Html.Attributes exposing (href, target, class)
 import Debug
 
 import ElmFire exposing
-  ( fromUrl, toUrl, sub, parent, root, location, open
-  , set, remove, subscribe, unsubscribe
+  ( fromUrl, toUrl, key, sub, parent, root, push, location, open
+  , set, setWithPriority, setPriority, update, remove, subscribe, unsubscribe
   , valueChanged, child, added, changed, removed, moved
-  , Location, Reference, Query, Response (..), DataMsg, QueryId, Error (..)
+  , Location, Reference, Priority (..), Query, Response (..), DataMsg, QueryId, Error (..)
   )
 
 -------------------------------------------------------------------------------
@@ -137,7 +137,8 @@ viewLogEntry logEntry =
 
 viewDataMsg : DataMsg -> String
 viewDataMsg dataMsg =
-  (if dataMsg.key == "" then "(root)" else dataMsg.key) ++ ": " ++
+  let k = key dataMsg.reference in
+  (if k == "" then "(root)" else k) ++ ": " ++
   (Maybe.withDefault "no value" <| Maybe.map viewValue dataMsg.value)
 
 viewValue : JE.Value -> String
@@ -169,11 +170,19 @@ doOpen : String -> Location -> Task Error Reference
 doOpen step location =
   intercept toString step (open location)
 
-doSet : String -> JE.Value -> Location -> Task Error ()
+doSet : String -> JE.Value -> Location -> Task Error Reference
 doSet step value location =
   intercept (always "synced") step (set value location)
 
-doRemove : String -> Location -> Task Error ()
+doSetPriority : String -> Priority -> Location -> Task Error Reference
+doSetPriority step priority location =
+  intercept (always "synced") step (setPriority priority location)
+
+doUpdate : String -> JE.Value -> Location -> Task Error Reference
+doUpdate step value location =
+  intercept (always "synced") step (update value location)
+
+doRemove : String -> Location -> Task Error Reference
 doRemove step location =
   intercept (always "synced") step (remove location)
 
@@ -200,6 +209,10 @@ doRefUrl : String -> Reference -> Task e ()
 doRefUrl id ref =
   Signal.send notes.address (LogTaskSuccess id (toUrl ref))
 
+doRefKey : String -> Reference -> Task e ()
+doRefKey id ref =
+  Signal.send notes.address (LogTaskSuccess id (key ref))
+
 -------------------------------------------------------------------------------
 
 andAnyway : Task x a -> Task y b -> Task y b
@@ -215,11 +228,11 @@ port runTasks =
   `andAnyway` doSubscribe "query2 parent value" valueChanged (loc |> parent)
   `andAnyway` doSleep "1" 2
   `andAnyway` doSet "set2 value" (JE.string "hello") loc
-  `andAnyway` doOpen "open good" loc
+  `andAnyway` doOpen "open push" loc
   `andThen`   ( \ref ->
                 doShowRefLocation "opened location" ref
-                `andAnyway`
-                doRefUrl "opened url" ref
+                `andAnyway` doRefUrl "opened url" ref
+                `andAnyway` doRefKey "opened key" ref
               )
   `andAnyway` doOpen "root" (loc |> root)
   `andAnyway` doOpen "open bad" (loc |> root |> parent)
@@ -238,4 +251,11 @@ port runTasks =
                 `andThen` \queryId -> doUnsubscribe "unsubscribe" queryId
               )
   `andAnyway` doRemove "remove child" (loc |> sub "b")
+  `andAnyway` doUpdate "update object a and d"
+      (JE.object [("a", (JE.string "Hello")), ("d", (JE.string "Elmies"))])
+      loc
+  `andAnyway` ( doOpen "push open" (loc |> sub "e" |> push)
+                `andThen` \ref -> doSet "push set" (JE.string <| key ref) (location ref)
+                `andThen` \ref -> doSetPriority "setPriority" (NumPrio 17) (location ref)
+              )
   `andAnyway` succeed ()

@@ -13,7 +13,7 @@ import Json.Encode exposing (string, encode)
 
 import ElmFire exposing
   ( fromUrl, set, subscribe, valueChanged
-  , Response (..), QueryId, Error
+  , Reference, Response (..), QueryId, Error
   )
 
 -- You may want to change this url
@@ -25,7 +25,7 @@ responses = Signal.mailbox NoResponse
 inputString : Mailbox String
 inputString = mailbox ""
 
-port runSet : Signal (Task Error ())
+port runSet : Signal (Task Error Reference)
 port runSet = Signal.map
   (\str -> set (string str) (fromUrl url))
   inputString.signal
