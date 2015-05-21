@@ -91,7 +91,7 @@ or it is `Nothing` when the queried location doesn't exist.
 -}
 type alias DataMsg =
   { queryId: QueryId
-  , key: Maybe String
+  , refLocation: String
   , value: Maybe JE.Value
   }
 
