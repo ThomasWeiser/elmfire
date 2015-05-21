@@ -17,10 +17,10 @@ import Html.Attributes exposing (href, target, class)
 import Debug
 
 import ElmFire exposing
-  ( fromUrl, sub, parent, root, open
+  ( fromUrl, toUrl, sub, parent, root, location, open
   , set, remove, subscribe, unsubscribe
   , valueChanged, child, added, changed, removed, moved
-  , Location, Query, Response (..), DataMsg, QueryId, Error (..)
+  , Location, Reference, Query, Response (..), DataMsg, QueryId, Error (..)
   )
 
 -------------------------------------------------------------------------------
@@ -165,7 +165,7 @@ errorToString error =
 
 -------------------------------------------------------------------------------
 
-doOpen : String -> Location -> Task Error Location
+doOpen : String -> Location -> Task Error Reference
 doOpen step location =
   intercept toString step (open location)
 
@@ -192,6 +192,13 @@ doSleep id seconds =
   `andThen` \_ -> sleep (seconds * Time.second)
   `andThen` \_ -> Signal.send notes.address (LogTaskSuccess step "awake")
 
+doShowRefLocation : String -> Reference -> Task e ()
+doShowRefLocation id ref =
+  Signal.send notes.address (LogTaskSuccess id (location ref |> toString))
+
+doRefUrl : String -> Reference -> Task e ()
+doRefUrl id ref =
+  Signal.send notes.address (LogTaskSuccess id (toUrl ref))
 
 -------------------------------------------------------------------------------
 
@@ -209,6 +216,11 @@ port runTasks =
   `andAnyway` doSleep "1" 2
   `andAnyway` doSet "set2 value" (JE.string "hello") loc
   `andAnyway` doOpen "open good" loc
+  `andThen`   ( \ref ->
+                doShowRefLocation "opened location" ref
+                `andAnyway`
+                doRefUrl "opened url" ref
+              )
   `andAnyway` doOpen "root" (loc |> root)
   `andAnyway` doOpen "open bad" (loc |> root |> parent)
   `andAnyway` doSubscribe "query3 child added" (child added) loc

@@ -46,11 +46,15 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		return {ref: ref};
 	}
 
+	function toUrl (reference) {
+		return reference .toString ();
+	}
+
 	function open (location) {
 		return Task .asyncFunction (function (callback) {
 			locRef = getRef (location);
 			if ('ref' in locRef) {
-				callback (Task.succeed ({ ctor: 'RefLocation', _0: locRef.ref }));
+				callback (Task.succeed (locRef.ref ));
 			} else {
 				callback (Task.fail ({ ctor: 'FirebaseError', _0: locRef.error }));
 			}
@@ -178,6 +182,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		});
 	}
 	return localRuntime.Native.ElmFire.values = {
+		toUrl: toUrl,
 		open: open,
 		set: F2(set),
 		remove: remove,

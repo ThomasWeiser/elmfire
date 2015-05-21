@@ -1,11 +1,12 @@
 module ElmFire
   ( Location
+  , Reference
   , Query
   , QueryId
   , Response (..)
   , DataMsg
   , Error (..)
-  , fromUrl, sub, parent, root
+  , fromUrl, sub, parent, root, location, toUrl
   , open, set, remove, subscribe, unsubscribe
   , valueChanged, child, added, changed, removed, moved
   ) where
@@ -13,7 +14,10 @@ module ElmFire
 {-| Elm bindings to Firebase.
 
 # Firebase locations
-@docs Location, fromUrl, sub, parent, root, open
+@docs Location, fromUrl, sub, parent, root
+
+# Firebase references
+@docs Reference, open, location
 
 # Writing
 @docs set, remove
@@ -37,11 +41,12 @@ import Task exposing (Task)
 {-| Errors reported from Firebase -}
 type Error = FirebaseError String
 
-{-| A Firebase location, that represents a path into a firebase.
+{-| A Firebase location, which is a opaque type that represents a literal path into a firebase.
 
 A location can be constructed or obtained from
 - an absolute path by `fromUrl`
 - relative to another location by `sub`, `parent` and `root`
+- a reference by `location`
 
 Locations are generally unvalidated until their use in a task.
 The constructor functions are pure.
@@ -51,7 +56,13 @@ type Location
   | SubLocation String Location
   | ParentLocation Location
   | RootLocation Location
-  | RefLocation
+  | RefLocation Reference
+
+{-| A Firebase reference, which is a opaque type that represents a opened path.
+
+References are returned from some Firebase actions, notably in query results.
+-}
+type Reference = Reference
 
 {-| Specifies the event this query listens to (valueChanged, child added, ...) -}
 type Query
@@ -112,6 +123,18 @@ parent = ParentLocation
 root : Location -> Location
 root = RootLocation
 
+{-| Obtain a location from a reference.
+
+    reference = location location
+-}
+location : Reference -> Location
+location = RefLocation
+
+{-| Get the url of a reference.
+-}
+toUrl : Reference -> String
+toUrl = Native.ElmFire.toUrl
+
 {-| Actually open a location and give an internal representation of that reference.
 
 It's generally not necessary to explicitly open a constructed location.
@@ -123,7 +146,7 @@ The task fails if the location construct is invalid.
       (open <| sub user <| fromUrl "https://elmfire.firebaseio-demo.com/users")
       `andThen` Signal.send locationCache.address
 -}
-open : Location -> Task Error Location
+open : Location -> Task Error Reference
 open = Native.ElmFire.open
 
 {-| Write a Json value to a Firebase location.
