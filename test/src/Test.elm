@@ -137,7 +137,7 @@ viewLogEntry logEntry =
 
 viewDataMsg : DataMsg -> String
 viewDataMsg dataMsg =
-  (Maybe.withDefault "(root)" dataMsg.key) ++ ": " ++
+  (if dataMsg.key == "" then "(root)" else dataMsg.key) ++ ": " ++
   (Maybe.withDefault "no value" <| Maybe.map viewValue dataMsg.value)
 
 viewValue : JE.Value -> String

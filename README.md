@@ -48,11 +48,11 @@ The third parameter references the queried location.
 
 `type Response = NoResponse | Data DataMsg | QueryCanceled QueryId String`
 
-`type alias DataMsg = { queryId: QueryId, key: Maybe String, value: Maybe Value }`
+`type alias DataMsg = { queryId: QueryId, key: String, value: Maybe Value }`
 
 A response is either a `DataMsg` or a `QueryCanceled`.
 
-A `DataMsg` carries the corresponding `QueryId` and `Just Value` for the Json value or `Nothing` if the location doesn't exist. The `key` corresponds to the last part of the path. It is `Nothing` for the root.
+A `DataMsg` carries the corresponding `QueryId` and `Just Value` for the Json value or `Nothing` if the location doesn't exist. The `key` corresponds to the last part of the path. It is the empty string for the root.
 
 Example:
 

@@ -116,18 +116,16 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 					} else {
 						maybeVal = { ctor: 'Just', _0: val };
 					}
-					var key = snapshot .key (), maybeKey;
+					var key = snapshot .key ();
 					if (key === null) {
-						maybeKey = { ctor: 'Nothing' };
-					} else {
-						maybeKey = { ctor: 'Just', _0: key };
+						key = '';
 					}
 					var res = {
 						ctor: 'Data',
 						_0: {
 							_: {},
 							queryId: queryId,
-							key: maybeKey,
+							key: key,
 							value: maybeVal
 						}
 					};
