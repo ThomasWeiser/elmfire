@@ -19,10 +19,10 @@ module ElmFire
 @docs Location, fromUrl, sub, parent, root
 
 # Firebase references
-@docs Reference, open, location
+@docs Reference, open, key, toUrl, location
 
 # Writing
-@docs set, update, remove
+@docs set,setWithPriority, setPriority,  update, remove
 
 # Querying
 @docs Query, QueryId, subscribe, unsubscribe, valueChanged, child, added, changed, removed, moved
@@ -231,9 +231,10 @@ On success the task returns a QueryId,
 which can be used to match the corresponding responses
 and to cancel the query.
 
-The query results are reported via a mailbox. The addressee is given as first parameter.
+The query results are reported via messages to a mailbox.
+The first parameter is a function used to construct the message from a response.
 -}
-subscribe : Signal.Address Response -> Query -> Location -> Task Error QueryId
+subscribe : (Response -> Signal.Message) -> Query -> Location -> Task Error QueryId
 subscribe = Native.ElmFire.subscribe
 
 {-| Cancel a query subscription -}

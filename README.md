@@ -71,12 +71,12 @@ Example:
 
 Only basic querying is supported in this early version of ElmFire, so no filtering, no sorting, no `once`.
 
-    subscribe : Address Response -> Query -> Location -> Task Error QueryId
+    subscribe : (Response -> Signal.Message) -> Query -> Location -> Task Error QueryId
     unsubscribe : QueryId -> Task Error ()
     
-Use `subscribe` to start a querying the value(s) at a location.
+Use `subscribe` to start a querying the value(s) at a location. Query results are reported via messages to mailboxes.
  
-The first parameter is the address of a mailbox that receives the responses.
+The first parameter is a function used to construct the message to be sent for a response.
 The second parameter specifies the event to listen to: `valueChanged`, `child added`, `child changed`, `child removed` or `child moved`.
 The third parameter references the queried location.
 On success the task returns a QueryId, which can be used to match the corresponding responses and to cancel the query.
@@ -99,7 +99,10 @@ Example:
     responses = Signal.mailbox NoResponse
     
     port query : Task Error QueryId
-    port query = subscribe responses.address valueChanged (fromUrl "https:...firebaseio.com/...")
+    port query = subscribe
+                   (Signal.message responses.address)
+                   valueChanged
+                   (fromUrl "https:...firebaseio.com/...")
     
     ... = Signal.map
             (\response -> case response of
@@ -108,11 +111,12 @@ Example:
             )
             responses.signal
     
-Notes for possible changes of the API:
+Notes on possible changes of the API:
 
 - The `key` field may be dropped, as the reference also contains the key.
 - Currently, query results are reported to a mailbox.
-  Alternatively, query results may be reported by running a given task.
+  Alternatively, query results may be reported by running a given task
+  (which in turn may send a message to a mailbox or perform other reactions).
 
 ## Example.elm
 

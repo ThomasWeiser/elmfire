@@ -188,7 +188,7 @@ doRemove step location =
 
 doSubscribe : String -> Query -> Location -> Task Error QueryId
 doSubscribe step query location =
-  intercept toString step (subscribe responses.address query location)
+  intercept toString step (subscribe (Signal.message responses.address) query location)
 
 doUnsubscribe : String -> QueryId -> Task Error ()
 doUnsubscribe step queryId =
@@ -227,13 +227,13 @@ port runTasks =
   `andAnyway` (Task.spawn <| doSet "async set1 value" (JE.string "start") loc)
   `andAnyway` doSubscribe "query2 parent value" valueChanged (loc |> parent)
   `andAnyway` doSleep "1" 2
-  `andAnyway` doSet "set2 value" (JE.string "hello") loc
-  `andAnyway` doOpen "open push" loc
+  `andAnyway` doOpen "open pushed" (push loc)
   `andThen`   ( \ref ->
                 doShowRefLocation "opened location" ref
                 `andAnyway` doRefUrl "opened url" ref
                 `andAnyway` doRefKey "opened key" ref
               )
+  `andAnyway` doSet "set2 value" (JE.string "hello") loc
   `andAnyway` doOpen "root" (loc |> root)
   `andAnyway` doOpen "open bad" (loc |> root |> parent)
   `andAnyway` doSubscribe "query3 child added" (child added) loc
