@@ -170,7 +170,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		return 'q' + ++qNum;
 	}
 
-	function subscribe (createResponseTask, query, location) {
+	function subscribe (createResponseTask, createCanceledTask, query, location) {
 		return Task .asyncFunction (function (callback) {
 			locRef = getRef (location);
 			if ('ref' in locRef) {
@@ -187,27 +187,24 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 						key = '';
 					}
 					var response = {
-						ctor: 'Data',
-						_0: {
-							_: {},
-							queryId: queryId,
-							key: key,
-							reference: snapshot .ref (),
-							value: maybeVal
-						}
+						_: {},
+						queryId: queryId,
+						key: key,
+						reference: snapshot .ref (),
+						value: maybeVal
 					};
 					setTimeout (function () {
 						Task .perform (createResponseTask (response));
 					}, 0);
 				};
 				var onCancel = function (err) {
-					var response = {
+					var cancellation = {
 						ctor: 'QueryCanceled',
 						_0: queryId,
 						_1: err .toString ()
 					};
 					setTimeout (function () {
-						Task .perform (createResponseTask (response));
+						Task .perform (createCanceledTask (cancellation));
 					}, 0);
 				};
 				eventType = 'badQuery';
@@ -255,7 +252,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		setPriority: F2(setPriority),
 		update: F2(update),
 		remove: remove,
-		subscribe: F3(subscribe),
+		subscribe: F4(subscribe),
 		unsubscribe: unsubscribe
 	};
 };

@@ -71,43 +71,48 @@ Example:
 
 Only basic querying is supported in this early version of ElmFire, so no filtering, no sorting, no `once`.
 
-    subscribe : (Response -> Task x a) -> Query -> Location -> Task Error QueryId
+    subscribe : (DataMsg -> Task x a) ->
+                (Cancellation -> Task y b) ->
+                Query ->
+                Location ->
+                Task Error QueryId
     unsubscribe : QueryId -> Task Error ()
-    
+
 Use `subscribe` to start a querying the value(s) at a location. Query results are reported via running a supplied task.
- 
-The first parameter is a function used to construct that task from a response.
-The second parameter specifies the event to listen to: `valueChanged`, `child added`, `child changed`, `child removed` or `child moved`.
+
+The first parameter of `subscribe` is a function used to construct that task from a data message.
+The second parameter is a function used to construct a task that is run when the query gets canceled.
+The third parameter specifies the event to listen to: `valueChanged`, `child added`, `child changed`, `child removed` or `child moved`.
 The third parameter references the queried location.
 On success the task returns a QueryId, which can be used to match the corresponding responses and to cancel the query.
 
-    type Response = NoResponse | Data DataMsg | QueryCanceled QueryId String
     type alias DataMsg =
       { queryId: QueryId
       , key: String
       , reference: Reference
       , value: Maybe Value
       }
+    type Cancellation = QueryCanceled QueryId String
 
-A response is either a `DataMsg` or a `QueryCanceled`.
 A `DataMsg` carries the corresponding `QueryId` and `Just Value` for the Json value or `Nothing` if the location doesn't exist.
 The `key` corresponds to the last part of the path. It is the empty string for the root.
 
 Example:
 
-    responses : Signal.Mailbox Response
-    responses = Signal.mailbox NoResponse
+    responses : Signal.Mailbox (Maybe DataMsg)
+    responses = Signal.mailbox Nothing
     
     port query : Task Error QueryId
     port query = subscribe
-                   (Signal.send responses.address)
-                   valueChanged
+                   (Signal.send responses.address << Just)
+                   (always (Task.succeed ()))
+                   (child added)
                    (fromUrl "https:...firebaseio.com/...")
     
     ... = Signal.map
             (\response -> case response of
-                Data dataMsg -> ...
-                otherwise -> ...
+                Nothing -> ...
+                Just dataMsg -> ...
             )
             responses.signal
     

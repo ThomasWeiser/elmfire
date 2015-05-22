@@ -20,7 +20,7 @@ import ElmFire exposing
   ( fromUrl, toUrl, key, sub, parent, root, push, location, open
   , set, setWithPriority, setPriority, update, remove, subscribe, unsubscribe
   , valueChanged, child, added, changed, removed, moved
-  , Location, Reference, Priority (..), Query, Response (..), DataMsg, QueryId, Error (..)
+  , Location, Reference, Priority (..), Query, Cancellation (..), DataMsg, QueryId, Error (..)
   )
 
 -------------------------------------------------------------------------------
@@ -28,6 +28,11 @@ import ElmFire exposing
 url = "https://elmfire.firebaseio-demo.com/test"
 
 -------------------------------------------------------------------------------
+
+type Response
+  = NoResponse
+  | Data DataMsg
+  | Canceled Cancellation
 
 -- All query responses a reported through this mailbox
 responses : Signal.Mailbox Response
@@ -188,7 +193,13 @@ doRemove step location =
 
 doSubscribe : String -> Query -> Location -> Task Error QueryId
 doSubscribe step query location =
-  intercept toString step (subscribe (Signal.send responses.address) query location)
+  intercept toString step
+    ( subscribe
+        (Signal.send responses.address << Data)
+        (Signal.send responses.address << Canceled)
+        query
+        location
+    )
 
 doUnsubscribe : String -> QueryId -> Task Error ()
 doUnsubscribe step queryId =

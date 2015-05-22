@@ -9,18 +9,18 @@ import Html.Events exposing (on, targetValue)
 import Html.Attributes exposing (href, target)
 import Signal exposing (Signal, Mailbox, mailbox, message)
 import Task exposing (Task)
-import Json.Encode exposing (string, encode)
+import Json.Encode as JE exposing (string, encode)
 
 import ElmFire exposing
   ( fromUrl, set, subscribe, valueChanged
-  , Reference, Response (..), QueryId, Error
+  , Reference, DataMsg, QueryId, Error
   )
 
 -- You may want to change this url
 url = "https://elmfire.firebaseio-demo.com/test"
 
-responses : Signal.Mailbox Response
-responses = Signal.mailbox NoResponse
+values : Signal.Mailbox (Maybe JE.Value)
+values = Signal.mailbox Nothing
 
 inputString : Mailbox String
 inputString = mailbox ""
@@ -30,15 +30,20 @@ port runSet = Signal.map
   (\str -> set (string str) (fromUrl url))
   inputString.signal
 
-port runQuery : Task Error QueryId
-port runQuery = subscribe (Signal.send responses.address) valueChanged (fromUrl url)
+doNothing : a -> Task x ()
+doNothing = always (Task.succeed ())
 
-view : Response -> Html
-view response =
-  let outputText = case response of
-    Data dataMsg ->
-      Maybe.withDefault "no value" <| Maybe.map (encode 0) dataMsg.value
-    otherwise -> "no query response"
+port runQuery : Task Error QueryId
+port runQuery =
+    subscribe
+        (Signal.send values.address << .value)
+        doNothing
+        valueChanged
+        (fromUrl url)
+
+view : Maybe JE.Value -> Html
+view maybeValue =
+  let outputText = Maybe.withDefault "no value" <| Maybe.map (encode 0) maybeValue
   in
   div []
   [ text "ElmFire test at: "
@@ -57,4 +62,4 @@ view response =
     ]
   ]
 
-main = Signal.map view responses.signal
+main = Signal.map view values.signal

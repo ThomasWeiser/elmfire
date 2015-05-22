@@ -4,8 +4,8 @@ module ElmFire
   , Priority (..)
   , Query
   , QueryId
-  , Response (..)
   , DataMsg
+  , Cancellation (..)
   , Error (..)
   , fromUrl, sub, parent, root, push, location, toUrl, key
   , open, set, setWithPriority, setPriority, update, remove
@@ -28,7 +28,7 @@ module ElmFire
 @docs Query, QueryId, subscribe, unsubscribe, valueChanged, child, added, changed, removed, moved
 
 # Query results
-@docs Response, DataMsg, responses
+@docs DataMsg, Cancellation
 
 # Error reporting
 @docs Error
@@ -90,11 +90,8 @@ type ChildQuery
 {-| Unique opaque identifier for each executed query -}
 type QueryId = QueryId
 
-{-| Query response: Either a received data or a query cancellation -}
-type Response
-  = NoResponse
-  | Data DataMsg
-  | QueryCanceled QueryId String
+{-| Message about cancelled query -}
+type Cancellation = QueryCanceled QueryId String
 
 {-| A received value.
 `queryId` can be used to correlate the response to the corresponding query.
@@ -234,10 +231,11 @@ and to cancel the query.
 The query results are reported via running a supplied task.
 
 The first parameter is a function used to construct that task from a response.
-The second parameter specifies the event to listen to: `valueChanged`, `child added`, `child changed`, `child removed` or `child moved`.
-The third parameter references the queried location.
+The second parameter is a function used to construct a task that is run when the query gets canceled.
+The third parameter specifies the event to listen to: `valueChanged`, `child added`, `child changed`, `child removed` or `child moved`.
+The fourth parameter references the queried location.
 -}
-subscribe : (Response -> Task x a) -> Query -> Location -> Task Error QueryId
+subscribe : (DataMsg -> Task x a) -> (Cancellation -> Task y b) -> Query -> Location -> Task Error QueryId
 subscribe = Native.ElmFire.subscribe
 
 {-| Cancel a query subscription -}
