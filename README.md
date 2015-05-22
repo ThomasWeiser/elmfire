@@ -71,12 +71,12 @@ Example:
 
 Only basic querying is supported in this early version of ElmFire, so no filtering, no sorting, no `once`.
 
-    subscribe : (Response -> Signal.Message) -> Query -> Location -> Task Error QueryId
+    subscribe : (Response -> Task x a) -> Query -> Location -> Task Error QueryId
     unsubscribe : QueryId -> Task Error ()
     
-Use `subscribe` to start a querying the value(s) at a location. Query results are reported via messages to mailboxes.
+Use `subscribe` to start a querying the value(s) at a location. Query results are reported via running a supplied task.
  
-The first parameter is a function used to construct the message to be sent for a response.
+The first parameter is a function used to construct that task from a response.
 The second parameter specifies the event to listen to: `valueChanged`, `child added`, `child changed`, `child removed` or `child moved`.
 The third parameter references the queried location.
 On success the task returns a QueryId, which can be used to match the corresponding responses and to cancel the query.
@@ -100,7 +100,7 @@ Example:
     
     port query : Task Error QueryId
     port query = subscribe
-                   (Signal.message responses.address)
+                   (Signal.send responses.address)
                    valueChanged
                    (fromUrl "https:...firebaseio.com/...")
     
@@ -111,12 +111,7 @@ Example:
             )
             responses.signal
     
-Notes on possible changes of the API:
-
-- The `key` field may be dropped, as the reference also contains the key.
-- Currently, query results are reported to a mailbox.
-  Alternatively, query results may be reported by running a given task
-  (which in turn may send a message to a mailbox or perform other reactions).
+Notes on a possible change of the API: The `key` field of `DataMsg` is redundant and may be dropped, as `reference` also contains the key.
 
 ## Example.elm
 

@@ -170,7 +170,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		return 'q' + ++qNum;
 	}
 
-	function subscribe (createResponseMsg, query, location) {
+	function subscribe (createResponseTask, query, location) {
 		return Task .asyncFunction (function (callback) {
 			locRef = getRef (location);
 			if ('ref' in locRef) {
@@ -197,7 +197,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 						}
 					};
 					setTimeout (function () {
-						Signal .sendMessage (createResponseMsg (response));
+						Task .perform (createResponseTask (response));
 					}, 0);
 				};
 				var onCancel = function (err) {
@@ -207,7 +207,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 						_1: err .toString ()
 					};
 					setTimeout (function () {
-						Signal .sendMessage (createResponseMsg (response));
+						Task .perform (createResponseTask (response));
 					}, 0);
 				};
 				eventType = 'badQuery';

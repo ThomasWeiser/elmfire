@@ -188,7 +188,7 @@ doRemove step location =
 
 doSubscribe : String -> Query -> Location -> Task Error QueryId
 doSubscribe step query location =
-  intercept toString step (subscribe (Signal.message responses.address) query location)
+  intercept toString step (subscribe (Signal.send responses.address) query location)
 
 doUnsubscribe : String -> QueryId -> Task Error ()
 doUnsubscribe step queryId =

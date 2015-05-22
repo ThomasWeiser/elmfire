@@ -231,10 +231,13 @@ On success the task returns a QueryId,
 which can be used to match the corresponding responses
 and to cancel the query.
 
-The query results are reported via messages to a mailbox.
-The first parameter is a function used to construct the message from a response.
+The query results are reported via running a supplied task.
+
+The first parameter is a function used to construct that task from a response.
+The second parameter specifies the event to listen to: `valueChanged`, `child added`, `child changed`, `child removed` or `child moved`.
+The third parameter references the queried location.
 -}
-subscribe : (Response -> Signal.Message) -> Query -> Location -> Task Error QueryId
+subscribe : (Response -> Task x a) -> Query -> Location -> Task Error QueryId
 subscribe = Native.ElmFire.subscribe
 
 {-| Cancel a query subscription -}

@@ -31,7 +31,7 @@ port runSet = Signal.map
   inputString.signal
 
 port runQuery : Task Error QueryId
-port runQuery = subscribe (Signal.message responses.address) valueChanged (fromUrl url)
+port runQuery = subscribe (Signal.send responses.address) valueChanged (fromUrl url)
 
 view : Response -> Html
 view response =
