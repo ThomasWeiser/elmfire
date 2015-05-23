@@ -22,10 +22,11 @@ module ElmFire
 @docs Reference, open, key, toUrl, location
 
 # Writing
-@docs set,setWithPriority, setPriority,  update, remove
+@docs set, setWithPriority, setPriority,  update, remove
 
 # Querying
-@docs Query, QueryId, subscribe, unsubscribe, valueChanged, child, added, changed, removed, moved
+@docs Query, QueryId, subscribe, unsubscribe, valueChanged,
+child, added, changed, removed, moved
 
 # Query results
 @docs DataMsg, Cancellation
@@ -43,11 +44,12 @@ import Task exposing (Task)
 {-| Errors reported from Firebase -}
 type Error = FirebaseError String
 
-{-| A Firebase location, which is a opaque type that represents a literal path into a firebase.
+{-| A Firebase location, which is an opaque type
+that represents a literal path into a firebase.
 
 A location can be constructed or obtained from
 - an absolute path by `fromUrl`
-- relative to another location by `sub`, `parent` and `root`
+- relative to another location by `sub`, `parent`, `root`, `push`
 - a reference by `location`
 
 Locations are generally unvalidated until their use in a task.
@@ -61,15 +63,16 @@ type Location
   | PushLocation Location
   | RefLocation Reference
 
-{-| A Firebase reference, which is a opaque type that represents a opened path.
+{-| A Firebase reference, which is an opaque type that represents a opened path.
 
 References are returned from many Firebase tasks as well as in query results.
 -}
 type Reference = Reference
 
-{- Each existing location in a Firebase may be attributed with a priority that can be a number or a string.
+{- Each existing location in a Firebase may be attributed with a priority,
+which can be a number or a string.
 
-Priorities can be used to filter and to sort entries.
+Priorities can be used for filtering and sorting entries in a query.
 -}
 type Priority
   = NoPrio
@@ -107,14 +110,14 @@ type alias DataMsg =
 
 {-| Construct a new location from a full Firebase URL.
 
-    location = fromUrl "https://elmfire.firebaseio-demo.com/"
+    loc = fromUrl "https://elmfire.firebaseio-demo.com/foo/bar"
 -}
 fromUrl : String -> Location
 fromUrl = UrlLocation
 
 {-| Construct a location for the descendant at the specified relative path.
 
-    locUsers = sub "users" location
+    locUsers = sub "users" loc
 -}
 sub : String -> Location -> Location
 sub = SubLocation
@@ -133,20 +136,24 @@ parent = ParentLocation
 root : Location -> Location
 root = RootLocation
 
-{-| Construct a new child location using a generated key.
+{-| Construct a new child location using a to-be-generated key.
 
-The unique key generated is prefixed with a client-generated timestamp so that the resulting list will be chronologically-sorted.
+A unique key is generated whenever the location is used in one of the tasks,
+notably `open`or `set`.
+Keys are prefixed with a client-generated timestamp so that a resulting list
+will be chronologically-sorted.
 
-You may `open` the location or use the result of `set` to get the generated key.
+You may `open` the location or use `set` to actually generate the key
+and get its name.
 
-    open (push loc) `andThen` Signal.send mailboxToReceiveKey.address
+    set val (push loc) `andThen` (\ref -> ... ref.key ...)
 -}
 push : Location -> Location
 push = PushLocation
 
 {-| Obtain a location from a reference.
 
-    reference = location location
+    reference = location loc
 -}
 location : Reference -> Location
 location = RefLocation
@@ -158,12 +165,13 @@ toUrl = Native.ElmFire.toUrl
 {-| Get the key of a reference.
 
 The last token in a Firebase location is considered its key.
-For a refernce to the root key will return the empty string.
+It's the empty string for the root.
 -}
 key : Reference -> String
 key = Native.ElmFire.key
 
-{-| Actually open a location, which results in a reference (if the location is valid).
+{-| Actually open a location, which results in a reference
+(if the location is valid).
 
 It's generally not necessary to explicitly open a constructed location.
 It can be used to check the location and to cache Firebase references.
@@ -172,14 +180,14 @@ The task fails if the location construct is invalid.
 
     openTask =
       (open <| sub user <| fromUrl "https://elmfire.firebaseio-demo.com/users")
-      `andThen` Signal.send locationCache.address
+      `andThen` (\ref -> Signal.send userRefCache.address (user, ref))
 -}
 open : Location -> Task Error Reference
 open = Native.ElmFire.open
 
 {-| Write a Json value to a Firebase location.
 
-The task completes with `()` when
+The task completes with a reference to the changed location when
 synchronization to the Firebase servers has completed.
 The task may result in an error if the location is invalid
 or you have no permission to write this data.
@@ -199,19 +207,16 @@ setPriority = Native.ElmFire.setPriority
 
 {-| Write the children in a Json value to a Firebase location.
 
-This will overwrite only children present in the first parameter and will leave others untouched.
+This will overwrite only children present in the first parameter
+and will leave others untouched.
 
-The task completes with `()` when
-synchronization to the Firebase servers has completed.
-The task may result in an error if the location is invalid
-or you have no permission to write this data.
 -}
 update : JE.Value -> Location -> Task Error Reference
 update = Native.ElmFire.update
 
 {-| Delete a Firebase location.
 
-The task completes with `()` when
+The task completes with a reference to the deleted location when
 synchronization to the Firebase servers has completed.
 The task may result in an error if the location is invalid
 or you have no permission to remove this data.
@@ -231,11 +236,17 @@ and to cancel the query.
 The query results are reported via running a supplied task.
 
 The first parameter is a function used to construct that task from a response.
-The second parameter is a function used to construct a task that is run when the query gets canceled.
-The third parameter specifies the event to listen to: `valueChanged`, `child added`, `child changed`, `child removed` or `child moved`.
-The fourth parameter references the queried location.
+The second parameter is a function used to construct a task that is run
+when the query gets canceled.
+The third parameter specifies the event to listen to:
+`valueChanged`, `child added`, `child changed`, `child removed` or `child moved`.
+The fourth parameter references the location to be queried.
 -}
-subscribe : (DataMsg -> Task x a) -> (Cancellation -> Task y b) -> Query -> Location -> Task Error QueryId
+subscribe : (DataMsg -> Task x a) ->
+            (Cancellation -> Task y b) ->
+            Query ->
+            Location ->
+            Task Error QueryId
 subscribe = Native.ElmFire.subscribe
 
 {-| Cancel a query subscription -}

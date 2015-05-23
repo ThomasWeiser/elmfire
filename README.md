@@ -32,10 +32,10 @@ Example:
 ## References to Locations
 
 Many actions on a Firebase location return a reference to that location in their results.
-Likewise, query results contains a reference to the location of the reported value.
+Likewise, query results contain a reference to the location of the reported value.
 
 References can inform about the key or the complete URL of the referred location.
-And a reference may be converted back to a location, which can be used for a new task.
+And a reference may be converted back to a location, which can be used in a new task.
 
 Additionally, a location can be opened (without modifying or querying),
 which results in a reference if the location is valid.
@@ -57,8 +57,8 @@ but it may be used to check the location or to cache Firebase references.
     remove          : Location -> Task Error Reference
 
 These tasks complete when synchronization to the Firebase servers has completed.
-They result in a Reference to the modified location.
-A task may result in an error if the location is invalid or you have no permission to modify the data.
+On success they result in a Reference to the modified location.
+The result in an error if the location is invalid or you have no permission to modify the data.
 
 Values are given as Json values, i.e. `Json.Encode.Value`.
 
@@ -78,7 +78,7 @@ Only basic querying is supported in this early version of ElmFire, so no filteri
                 Task Error QueryId
     unsubscribe : QueryId -> Task Error ()
 
-Use `subscribe` to start a querying the value(s) at a location. Query results are reported via running a supplied task.
+Use `subscribe` to start querying the value(s) at a location. Query results are reported via running a supplied task.
 
 The first parameter of `subscribe` is a function used to construct that task from a data message.
 The second parameter is a function used to construct a task that is run when the query gets canceled.
@@ -95,7 +95,10 @@ On success the task returns a QueryId, which can be used to match the correspond
     type Cancellation = QueryCanceled QueryId String
 
 A `DataMsg` carries the corresponding `QueryId` and `Just Value` for the Json value or `Nothing` if the location doesn't exist.
-The `key` corresponds to the last part of the path. It is the empty string for the root.
+
+`key` corresponds to the last part of the path.
+It is the empty string for the root.
+Keys are relevant notably for child queries.
 
 Example:
 
