@@ -69,21 +69,29 @@ Example:
     
 ## Querying
 
-Only basic querying is supported in this early version of ElmFire, so no filtering, no sorting, no `once`.
+Only basic querying is supported in this early version of ElmFire, so no filtering, no sorting.
 
-    subscribe : (DataMsg -> Task x a) ->
-                (Cancellation -> Task y b) ->
-                Query ->
-                Location ->
-                Task Error QueryId
+    once        : Query -> Location -> Task Error DataMsg       
+    subscribe   : (DataMsg -> Task x a) ->
+                  (Cancellation -> Task y b) ->
+                  Query ->
+                  Location ->
+                  Task Error QueryId
     unsubscribe : QueryId -> Task Error ()
+    
+Use `once` to listen to exactly one event of the given type.
+The first parameter specifies the event to listen to: `valueChanged`, `child added`, `child changed`, `child removed` or `child moved`.
+The second parameter references the queried location.
 
-Use `subscribe` to start querying the value(s) at a location. Query results are reported via running a supplied task.
+Use `subscribe` to start querying the specified events.
+Subscription queries return a arbitrary number of data messages,
+which are reported via running a supplied task.
 
 The first parameter of `subscribe` is a function used to construct that task from a data message.
 The second parameter is a function used to construct a task that is run when the query gets canceled.
 The third parameter specifies the event to listen to: `valueChanged`, `child added`, `child changed`, `child removed` or `child moved`.
-The third parameter references the queried location.
+The fourth parameter references the queried location.
+
 On success the task returns a QueryId, which can be used to match the corresponding responses and to cancel the query.
 
     type alias DataMsg =
@@ -145,7 +153,7 @@ There is a Makefile to build the app. On most Unix-like systems a `cd test; make
 
 There are a lot of features I plan to add in the near future:
 
-* Querying: `once`, filtering and sorting
+* Querying: filtering and sorting
 * Transactions
 * Authentication
 * Better test app

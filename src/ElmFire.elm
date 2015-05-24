@@ -9,7 +9,7 @@ module ElmFire
   , Error (..)
   , fromUrl, sub, parent, root, push, location, toUrl, key
   , open, set, setWithPriority, setPriority, update, remove
-  , subscribe, unsubscribe
+  , subscribe, unsubscribe, once
   , valueChanged, child, added, changed, removed, moved
   ) where
 
@@ -42,7 +42,9 @@ import Signal exposing (Address)
 import Task exposing (Task)
 
 {-| Errors reported from Firebase -}
-type Error = FirebaseError String
+type Error
+  = LocationError String
+  | FirebaseError String
 
 {-| A Firebase location, which is an opaque type
 that represents a literal path into a firebase.
@@ -224,7 +226,7 @@ or you have no permission to remove this data.
 remove : Location -> Task Error Reference
 remove = Native.ElmFire.remove
 
-{-| Query a Firebase location.
+{-| Query a Firebase location by subscription
 
 (This early version of ElmFire only supports simple value queries,
 without ordering and filtering.)
@@ -240,7 +242,7 @@ The second parameter is a function used to construct a task that is run
 when the query gets canceled.
 The third parameter specifies the event to listen to:
 `valueChanged`, `child added`, `child changed`, `child removed` or `child moved`.
-The fourth parameter references the location to be queried.
+The fourth parameter specifies the location to be queried.
 -}
 subscribe : (DataMsg -> Task x a) ->
             (Cancellation -> Task y b) ->
@@ -252,6 +254,19 @@ subscribe = Native.ElmFire.subscribe
 {-| Cancel a query subscription -}
 unsubscribe : QueryId -> Task Error ()
 unsubscribe = Native.ElmFire.unsubscribe
+
+{-| Query a Firebase location once
+
+On success the tasks results in the desired DataMsg.
+It results in an error if either the location is invalid
+or you have no permission to read this data.
+
+The first parameter specifies the event to listen to:
+`valueChanged`, `child added`, `child changed`, `child removed` or `child moved`.
+The second parameter specifies the location to be queried.
+-}
+once : Query -> Location -> Task Error DataMsg
+once = Native.ElmFire.once
 
 {-| Query value changes at the referenced location -}
 valueChanged : Query

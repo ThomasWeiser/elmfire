@@ -23,7 +23,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 			ref = getRefUnsafe (location._1) .child (location._0);
 		} else if (location.ctor === 'ParentLocation') {
 			ref = getRefUnsafe (location._0) .parent ();
-			if (! ref) { throw ("no parent"); }
+			if (! ref) { throw ("Root has no parent"); }
 		} else if (location.ctor === 'RootLocation') {
 			ref = getRefUnsafe (location._0) .root ();
 		} else if (location.ctor === 'PushLocation') {
@@ -32,20 +32,21 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 			ref = location._0;
 		}
 		if (! ref) {
-			throw ("Bad Firebase reference (should not happen)");
+			throw ("ElmFire internal error: bad Firebase reference. Should not happen, please report this!");
 		}
 		return ref;
 	}
 
-	function getRef (location) {
+	function getRef (location, callback) {
 		var ref;
 		try {
 			ref = getRefUnsafe (location);
 		}
 		catch (exception) {
-			return {error: "FireElm: " + exception.toString ()};
+			callback (Task.fail ({ ctor: 'LocationError', _0: exception.toString () }));
+			return null;
 		}
-		return {ref: ref};
+		return ref;
 	}
 
 	function toUrl (reference) {
@@ -62,103 +63,86 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 
 	function open (location) {
 		return Task .asyncFunction (function (callback) {
-			locRef = getRef (location);
-			if ('ref' in locRef) {
-				callback (Task.succeed (locRef.ref ));
-			} else {
-				callback (Task.fail ({ ctor: 'FirebaseError', _0: locRef.error }));
+			var ref = getRef (location, callback);
+			if (ref) {
+				callback (Task.succeed (ref ));
 			}
 		});
 	}
 
 	function set (value, location) {
 		return Task .asyncFunction (function (callback) {
-			locRef = getRef (location);
-			if ('ref' in locRef) {
-				locRef.ref.set (value, function (err) {
+			var ref = getRef (location, callback);
+			if (ref) {
+				ref.set (value, function (err) {
 					if (err) {
 						callback (Task.fail ({ ctor: 'FirebaseError', _0: err.toString () }));
 					} else {
-						callback (Task.succeed (locRef.ref));
+						callback (Task.succeed (ref));
 					}
 				});
-			}
-			else {
-				callback (Task.fail ({ ctor: 'FirebaseError', _0: locRef.error }));
 			}
 		});
 	}
 
 	function setWithPriority (value, priority, location) {
 		return Task .asyncFunction (function (callback) {
-			locRef = getRef (location);
-			if ('ref' in locRef) {
+			var ref = getRef (location, callback);
+			if (ref) {
 				var prio = priority.ctor === 'NoPrio' ? null : priority._0;
-				locRef.ref.setWithPriority (value, prio, function (err) {
+				ref.setWithPriority (value, prio, function (err) {
 					if (err) {
 						callback (Task.fail ({ ctor: 'FirebaseError', _0: err.toString () }));
 					} else {
-						callback (Task.succeed (locRef.ref));
+						callback (Task.succeed (ref));
 					}
 				});
-			}
-			else {
-				callback (Task.fail ({ ctor: 'FirebaseError', _0: locRef.error }));
 			}
 		});
 	}
 
 	function setPriority (priority, location) {
 		return Task .asyncFunction (function (callback) {
-			locRef = getRef (location);
-			if ('ref' in locRef) {
+			var ref = getRef (location, callback);
+			if (ref) {
 				var prio = priority.ctor === 'NoPrio' ? null : priority._0;
-				locRef.ref.setPriority (prio, function (err) {
+				ref.setPriority (prio, function (err) {
 					if (err) {
 						callback (Task.fail ({ ctor: 'FirebaseError', _0: err.toString () }));
 					} else {
-						callback (Task.succeed (locRef.ref));
+						callback (Task.succeed (ref));
 					}
 				});
-			}
-			else {
-				callback (Task.fail ({ ctor: 'FirebaseError', _0: locRef.error }));
 			}
 		});
 	}
 
 	function update (value, location) {
 		return Task .asyncFunction (function (callback) {
-			locRef = getRef (location);
-			if ('ref' in locRef) {
-				locRef.ref.update (value, function (err) {
+			var ref = getRef (location, callback);
+			if (ref) {
+				ref.update (value, function (err) {
 					if (err) {
 						callback (Task.fail ({ ctor: 'FirebaseError', _0: err.toString () }));
 					} else {
-						callback (Task.succeed (locRef.ref));
+						callback (Task.succeed (ref));
 					}
 				});
-			}
-			else {
-				callback (Task.fail ({ ctor: 'FirebaseError', _0: locRef.error }));
 			}
 		});
 	}
 
 	function remove (location) {
 		return Task .asyncFunction (function (callback) {
-			locRef = getRef (location);
-			if ('ref' in locRef) {
-				locRef.ref.remove (function (err) {
+			var ref = getRef (location, callback);
+			if (ref) {
+				ref.remove (function (err) {
 					if (err) {
 						callback (Task.fail ({ ctor: 'FirebaseError', _0: err.toString () }));
 					} else {
-						callback (Task.succeed (locRef.ref));
+						callback (Task.succeed (ref));
 					}
 				});
-			}
-			else {
-				callback (Task.fail ({ ctor: 'FirebaseError', _0: locRef.error }));
 			}
 		});
 	}
@@ -172,8 +156,8 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 
 	function subscribe (createResponseTask, createCanceledTask, query, location) {
 		return Task .asyncFunction (function (callback) {
-			locRef = getRef (location);
-			if ('ref' in locRef) {
+			var ref = getRef (location, callback);
+			if (ref) {
 				var queryId = nextQueryId ();
 				var onResponse = function (snapshot) {
 					var val = snapshot .val (), maybeVal;
@@ -186,7 +170,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 					if (key === null) {
 						key = '';
 					}
-					var response = {
+					var dataMsg = {
 						_: {},
 						queryId: queryId,
 						key: key,
@@ -194,7 +178,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 						value: maybeVal
 					};
 					setTimeout (function () {
-						Task .perform (createResponseTask (response));
+						Task .perform (createResponseTask (dataMsg));
 					}, 0);
 				};
 				var onCancel = function (err) {
@@ -219,15 +203,12 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 					}
 				}
 				queries [queryId] = {
-					ref: locRef.ref,
+					ref: ref,
 					eventType: eventType,
 					callback: onResponse
 				};
-				locRef.ref.on (eventType, onResponse, onCancel);
+				ref.on (eventType, onResponse, onCancel);
 				callback (Task.succeed (queryId));
-			}
-			else {
-				callback (Task.fail ({ ctor: 'FirebaseError', _0: locRef.error }));
 			}
 		});
 	}
@@ -243,16 +224,69 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 			}
 		});
 	}
+
+	function once (query, location) {
+		return Task .asyncFunction (function (callback) {
+			var ref = getRef (location, callback);
+			if (ref) {
+				var onResponse = function (snapshot) {
+					var val = snapshot .val (), maybeVal;
+					if (val === null) {
+						maybeVal = { ctor: 'Nothing' };
+					} else {
+						maybeVal = { ctor: 'Just', _0: val };
+					}
+					var key = snapshot .key ();
+					if (key === null) {
+						key = '';
+					}
+					var dataMsg = {
+						_: {},
+						queryId: "once",
+						key: key,
+						reference: snapshot .ref (),
+						value: maybeVal
+					};
+					setTimeout (function () {
+						callback (Task.succeed (dataMsg));
+					}, 0);
+				};
+				var onCancel = function (err) {
+					var error = {
+						ctor: 'FirebaseError',
+						_0: err .toString ()
+					};
+					setTimeout (function () {
+						callback (Task.fail (error));
+					}, 0);
+				};
+				eventType = 'badQuery';
+				if (query.ctor === 'ValueChanged') {
+					eventType = 'value';
+				} else if (query.ctor === 'Child') {
+					switch (query._0.ctor) {
+						case 'Added':   eventType = 'child_added'; break;
+						case 'Changed': eventType = 'child_changed'; break;
+						case 'Removed': eventType = 'child_removed'; break;
+						case 'Moved':   eventType = 'child_moved'; break;
+					}
+				}
+				ref.once (eventType, onResponse, onCancel);
+			}
+		});
+	}
+
 	return localRuntime.Native.ElmFire.values = {
 		toUrl: toUrl,
 		key: key,
 		open: open,
-		set: F2(set),
-		setWithPriority: F3(setWithPriority),
-		setPriority: F2(setPriority),
-		update: F2(update),
+		set: F2 (set),
+		setWithPriority: F3 (setWithPriority),
+		setPriority: F2 (setPriority),
+		update: F2 (update),
 		remove: remove,
-		subscribe: F4(subscribe),
-		unsubscribe: unsubscribe
+		subscribe: F4 (subscribe),
+		unsubscribe: unsubscribe,
+		once: F2 (once)
 	};
 };

@@ -18,7 +18,7 @@ import Debug
 
 import ElmFire exposing
   ( fromUrl, toUrl, key, sub, parent, root, push, location, open
-  , set, setWithPriority, setPriority, update, remove, subscribe, unsubscribe
+  , set, setWithPriority, setPriority, update, remove, subscribe, unsubscribe, once
   , valueChanged, child, added, changed, removed, moved
   , Location, Reference, Priority (..), Query, Cancellation (..), DataMsg, QueryId, Error (..)
   )
@@ -143,11 +143,12 @@ viewLogEntry logEntry =
 viewDataMsg : DataMsg -> String
 viewDataMsg dataMsg =
   let k = key dataMsg.reference in
-  (if k == "" then "(root)" else k) ++ ": " ++
-  (Maybe.withDefault "no value" <| Maybe.map viewValue dataMsg.value)
+  (if k == "" then "(root)" else k) ++ ": " ++ (viewValue dataMsg.value)
 
-viewValue : JE.Value -> String
-viewValue value = JE.encode 0 value
+viewValue : Maybe JE.Value -> String
+viewValue maybeValue = case maybeValue of
+  Just value -> JE.encode 0 value
+  Nothing    -> "no value"
 
 main = Signal.map view state
 
@@ -167,7 +168,8 @@ intercept valueToString step task =
 errorToString : Error -> String
 errorToString error =
   case error of
-      FirebaseError str -> str
+      LocationError str -> "LocationError " ++ str
+      FirebaseError str -> "FirebaseError " ++ str
 
 -------------------------------------------------------------------------------
 
@@ -204,6 +206,13 @@ doSubscribe step query location =
 doUnsubscribe : String -> QueryId -> Task Error ()
 doUnsubscribe step queryId =
   intercept (always "done") step (unsubscribe queryId)
+
+doOnce : String -> Query -> Location -> Task Error (Maybe JE.Value)
+doOnce step query location =
+  intercept viewValue step
+    ( once query location
+      `andThen` \dataMsg -> succeed dataMsg.value
+    )
 
 doSleep : String -> Float -> Task () ()
 doSleep id seconds =
@@ -261,6 +270,7 @@ port runTasks =
   `andAnyway` ( doSubscribe "subscribe" valueChanged loc
                 `andThen` \queryId -> doUnsubscribe "unsubscribe" queryId
               )
+  `andAnyway` doOnce "query once" valueChanged loc
   `andAnyway` doRemove "remove child" (loc |> sub "b")
   `andAnyway` doUpdate "update object a and d"
       (JE.object [("a", (JE.string "Hello")), ("d", (JE.string "Elmies"))])
