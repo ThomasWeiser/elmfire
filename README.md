@@ -100,7 +100,10 @@ On success the task returns a QueryId, which can be used to match the correspond
       , reference: Reference
       , value: Maybe Value
       }
-    type Cancellation = QueryCanceled QueryId String
+    type Cancellation
+      = Unsubscribed QueryId
+      | NoQueryPermission QueryId String
+      | QueryError QueryId String
 
 A `DataMsg` carries the corresponding `QueryId` and `Just Value` for the Json value or `Nothing` if the location doesn't exist.
 

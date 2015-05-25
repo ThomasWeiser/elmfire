@@ -100,7 +100,10 @@ type ChildQuery
 type QueryId = QueryId
 
 {-| Message about cancelled query -}
-type Cancellation = QueryCanceled QueryId String
+type Cancellation
+  = Unsubscribed QueryId
+  | NoQueryPermission QueryId String
+  | QueryError QueryId String
 
 {-| A received value.
 `queryId` can be used to correlate the response to the corresponding query.
@@ -237,7 +240,7 @@ without ordering and filtering.)
 
 On success the task returns a QueryId,
 which can be used to match the corresponding responses
-and to cancel the query.
+and to unsubscribe the query.
 
 The query results are reported via running a supplied task.
 

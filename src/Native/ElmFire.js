@@ -176,7 +176,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		return eventType;
 	}
 
-	function subscribe (createResponseTask, createCanceledTask, query, location) {
+	function subscribe (createResponseTask, createCancellationTask, query, location) {
 		return Task .asyncFunction (function (callback) {
 			var ref = getRef (location, callback);
 			if (ref) {
@@ -204,20 +204,27 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 					}, 0);
 				};
 				var onCancel = function (err) {
+					var ctor;
+					if (err.ocde == 'PERMISSION_DENIED') {
+						ctor = 'NoQueryPermission';
+					} else {
+						ctor = 'QueryError';
+					}
 					var cancellation = {
-						ctor: 'QueryCanceled',
+						ctor: ctor,
 						_0: queryId,
 						_1: err .toString ()
 					};
 					setTimeout (function () {
-						Task .perform (createCanceledTask (cancellation));
+						Task .perform (createCancellationTask (cancellation));
 					}, 0);
 				};
 				var eventType = queryEventType (query);
 				queries [queryId] = {
 					ref: ref,
 					eventType: eventType,
-					callback: onResponse
+					callback: onResponse,
+					createCancellationTask: createCancellationTask
 				};
 				try { ref.on (eventType, onResponse, onCancel); }
 				catch (exception) {
@@ -239,6 +246,11 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 					callback (exTaskFail (exception));
 					return;
 				}
+				setTimeout (function () {
+					Task.perform (query.createCancellationTask ({
+						ctor: 'Unsubscribed', _0: queryId
+					}));
+				});
 				callback (Task.succeed (Utils.Tuple0));
 			} else {
 				callback (Task.fail ({ ctor: 'UnknownQueryId' }));

@@ -25,8 +25,7 @@ import ElmFire exposing
 
 -------------------------------------------------------------------------------
 
--- url = "https://elmfire.firebaseio-demo.com/test"
-url = "https://elmfiretest.firebaseio.com/test"
+url = "https://elmfire.firebaseio-demo.com/test"
 
 -------------------------------------------------------------------------------
 
@@ -139,7 +138,10 @@ viewLogEntry logEntry =
   LogResponse response ->
     Just <| case response of
       Data dataMsg -> line "response" (toString dataMsg.queryId) (viewDataMsg dataMsg)
-      otherwise -> line "response" "response" "no dataMsg"
+      Canceled (cancellation) -> case cancellation of
+        Unsubscribed id -> line "canceled" (toString id) "unsubscribed"
+        NoQueryPermission id str -> line "canceled" (toString id) ("noQueryPermission: " ++ str)
+        QueryError id str -> line "canceled" (toString id) ("queryError: " ++ str)
 
 viewDataMsg : DataMsg -> String
 viewDataMsg dataMsg =
