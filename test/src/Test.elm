@@ -25,7 +25,8 @@ import ElmFire exposing
 
 -------------------------------------------------------------------------------
 
-url = "https://elmfire.firebaseio-demo.com/test"
+-- url = "https://elmfire.firebaseio-demo.com/test"
+url = "https://elmfiretest.firebaseio.com/test"
 
 -------------------------------------------------------------------------------
 
@@ -159,17 +160,11 @@ intercept valueToString step task =
   Signal.send notes.address (LogTaskStart step)
   `andThen` \_ ->
     ( task
-      `onError` \err -> Signal.send notes.address (LogTaskFailure step (errorToString err))
+      `onError` \err -> Signal.send notes.address (LogTaskFailure step (toString err))
       `andThen` \_   -> fail err
     )
     `andThen` \val -> Signal.send notes.address (LogTaskSuccess step (valueToString val))
     `andThen` \_   -> succeed val
-
-errorToString : Error -> String
-errorToString error =
-  case error of
-      LocationError str -> "LocationError " ++ str
-      FirebaseError str -> "FirebaseError " ++ str
 
 -------------------------------------------------------------------------------
 

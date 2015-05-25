@@ -15,6 +15,8 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 	var Task = Elm.Native.Task.make (localRuntime);
 	var Utils = Elm.Native.Utils.make (localRuntime);
 
+	var pleaseReportThis = ' Should not happen, please report this as a bug in ElmFire!'
+
 	function getRefUnsafe (location) {
 		var ref;
 		if (location.ctor === 'UrlLocation') {
@@ -32,7 +34,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 			ref = location._0;
 		}
 		if (! ref) {
-			throw ("ElmFire internal error: bad Firebase reference. Should not happen, please report this!");
+			throw ('Bad Firebase reference.' + pleaseReportThis);
 		}
 		return ref;
 	}
@@ -61,26 +63,51 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		return key;
 	}
 
+	fbErrorMap = {
+		PERMISSION_DENIED: 'PermissionError',
+		UNAVAILABLE: 'UnavailableError',
+		TOO_BIG: 'TooBigError'
+	};
+
+	function fbTaskFail (fbError) {
+		var ctor = fbErrorMap [fbError.code];
+		if (! ctor) {
+			ctor = 'FirebaseError';
+		}
+		return Task.fail ({ ctor: ctor, _0: fbError.toString () });
+	}
+
+	function onCompleteFn (callback, ref) {
+		return function (err) {
+			if (err) {
+				callback (fbTaskFail (err));
+			} else {
+				callback (Task.succeed (ref));
+			}
+		};
+	}
+
+
+
 	function open (location) {
 		return Task .asyncFunction (function (callback) {
 			var ref = getRef (location, callback);
 			if (ref) {
-				callback (Task.succeed (ref ));
+				callback (Task.succeed (ref));
 			}
 		});
+	}
+
+	function exTaskFail (exception) {
+		return Task.fail ({ctor: 'FirebaseError', _0: exception.toString ()});
 	}
 
 	function set (value, location) {
 		return Task .asyncFunction (function (callback) {
 			var ref = getRef (location, callback);
 			if (ref) {
-				ref.set (value, function (err) {
-					if (err) {
-						callback (Task.fail ({ ctor: 'FirebaseError', _0: err.toString () }));
-					} else {
-						callback (Task.succeed (ref));
-					}
-				});
+				try { ref.set (value, onCompleteFn (callback, ref)); }
+				catch (exception) { callback (exTaskFail (exception)); }
 			}
 		});
 	}
@@ -90,13 +117,8 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 			var ref = getRef (location, callback);
 			if (ref) {
 				var prio = priority.ctor === 'NoPrio' ? null : priority._0;
-				ref.setWithPriority (value, prio, function (err) {
-					if (err) {
-						callback (Task.fail ({ ctor: 'FirebaseError', _0: err.toString () }));
-					} else {
-						callback (Task.succeed (ref));
-					}
-				});
+				try { ref.setWithPriority (value, prio, onCompleteFn (callback, ref)); }
+				catch (exception) { callback (exTaskFail (exception)); }
 			}
 		});
 	}
@@ -106,13 +128,8 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 			var ref = getRef (location, callback);
 			if (ref) {
 				var prio = priority.ctor === 'NoPrio' ? null : priority._0;
-				ref.setPriority (prio, function (err) {
-					if (err) {
-						callback (Task.fail ({ ctor: 'FirebaseError', _0: err.toString () }));
-					} else {
-						callback (Task.succeed (ref));
-					}
-				});
+				try { ref.setPriority (prio, onCompleteFn (callback, ref)); }
+				catch (exception) { callback (exTaskFail (exception)); }
 			}
 		});
 	}
@@ -121,13 +138,8 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		return Task .asyncFunction (function (callback) {
 			var ref = getRef (location, callback);
 			if (ref) {
-				ref.update (value, function (err) {
-					if (err) {
-						callback (Task.fail ({ ctor: 'FirebaseError', _0: err.toString () }));
-					} else {
-						callback (Task.succeed (ref));
-					}
-				});
+				try { ref.update (value, onCompleteFn (callback, ref)); }
+				catch (exception) { callback (exTaskFail (exception)); }
 			}
 		});
 	}
@@ -136,13 +148,8 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		return Task .asyncFunction (function (callback) {
 			var ref = getRef (location, callback);
 			if (ref) {
-				ref.remove (function (err) {
-					if (err) {
-						callback (Task.fail ({ ctor: 'FirebaseError', _0: err.toString () }));
-					} else {
-						callback (Task.succeed (ref));
-					}
-				});
+				try { ref.remove (onCompleteFn (callback, ref)); }
+				catch (exception) { callback (exTaskFail (exception)); }
 			}
 		});
 	}
@@ -152,6 +159,21 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 
 	function nextQueryId () {
 		return 'q' + ++qNum;
+	}
+
+	function queryEventType (query) {
+		var eventType = 'Bad query type.' + pleaseReportThis;
+		if (query.ctor === 'ValueChanged') {
+			eventType = 'value';
+		} else if (query.ctor === 'Child') {
+			switch (query._0.ctor) {
+				case 'Added':   eventType = 'child_added'; break;
+				case 'Changed': eventType = 'child_changed'; break;
+				case 'Removed': eventType = 'child_removed'; break;
+				case 'Moved':   eventType = 'child_moved'; break;
+			}
+		}
+		return eventType;
 	}
 
 	function subscribe (createResponseTask, createCanceledTask, query, location) {
@@ -191,23 +213,17 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 						Task .perform (createCanceledTask (cancellation));
 					}, 0);
 				};
-				eventType = 'badQuery';
-				if (query.ctor === 'ValueChanged') {
-					eventType = 'value';
-				} else if (query.ctor === 'Child') {
-					switch (query._0.ctor) {
-						case 'Added':   eventType = 'child_added'; break;
-						case 'Changed': eventType = 'child_changed'; break;
-						case 'Removed': eventType = 'child_removed'; break;
-						case 'Moved':   eventType = 'child_moved'; break;
-					}
-				}
+				var eventType = queryEventType (query);
 				queries [queryId] = {
 					ref: ref,
 					eventType: eventType,
 					callback: onResponse
 				};
-				ref.on (eventType, onResponse, onCancel);
+				try { ref.on (eventType, onResponse, onCancel); }
+				catch (exception) {
+					callback (exTaskFail (exception));
+					return;
+				}
 				callback (Task.succeed (queryId));
 			}
 		});
@@ -217,10 +233,15 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		return Task .asyncFunction (function (callback) {
 			if (queryId in queries) {
 				var query = queries [queryId];
-				query.ref.off (query.eventType, query.callback);
+				delete queries [queryId];
+				try { query.ref.off (query.eventType, query.callback); }
+				catch (exception) {
+					callback (exTaskFail (exception));
+					return;
+				}
 				callback (Task.succeed (Utils.Tuple0));
 			} else {
-				callback (Task.fail ({ ctor: 'FirebaseError', _0: 'unknown queryId' }));
+				callback (Task.fail ({ ctor: 'UnknownQueryId' }));
 			}
 		});
 	}
@@ -260,18 +281,11 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 						callback (Task.fail (error));
 					}, 0);
 				};
-				eventType = 'badQuery';
-				if (query.ctor === 'ValueChanged') {
-					eventType = 'value';
-				} else if (query.ctor === 'Child') {
-					switch (query._0.ctor) {
-						case 'Added':   eventType = 'child_added'; break;
-						case 'Changed': eventType = 'child_changed'; break;
-						case 'Removed': eventType = 'child_removed'; break;
-						case 'Moved':   eventType = 'child_moved'; break;
-					}
+				var eventType = queryEventType (query);
+				try { ref.once (eventType, onResponse, onCancel); }
+				catch (exception) {
+					callback (exTaskFail (exception));
 				}
-				ref.once (eventType, onResponse, onCancel);
 			}
 		});
 	}

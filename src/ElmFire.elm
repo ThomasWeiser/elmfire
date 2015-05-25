@@ -44,7 +44,11 @@ import Task exposing (Task)
 {-| Errors reported from Firebase -}
 type Error
   = LocationError String
+  | PermissionError String
+  | UnavailableError String
+  | TooBigError String
   | FirebaseError String
+  | UnknownQueryId
 
 {-| A Firebase location, which is an opaque type
 that represents a literal path into a firebase.
