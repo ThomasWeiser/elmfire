@@ -20,7 +20,7 @@ import ElmFire exposing
   ( fromUrl, toUrl, key, sub, parent, root, push, location, open
   , set, setWithPriority, setPriority, update, remove, subscribe, unsubscribe, once
   , valueChanged, child, added, changed, removed, moved
-  , Location, Reference, Priority (..), Query, Cancellation (..), DataMsg, QueryId, Error (..)
+  , Location, Reference, Priority (..), Query, Cancellation (..), Snapshot, QueryId, Error (..)
   )
 
 -------------------------------------------------------------------------------
@@ -31,7 +31,7 @@ url = "https://elmfire.firebaseio-demo.com/test"
 
 type Response
   = NoResponse
-  | Data DataMsg
+  | Data Snapshot
   | Canceled Cancellation
 
 -- All query responses a reported through this mailbox
@@ -137,16 +137,16 @@ viewLogEntry logEntry =
     Just <| line "failure" step err
   LogResponse response ->
     Just <| case response of
-      Data dataMsg -> line "response" (toString dataMsg.queryId) (viewDataMsg dataMsg)
+      Data snapshot -> line "response" (toString snapshot.queryId) (viewSnapshot snapshot)
       Canceled (cancellation) -> case cancellation of
         Unsubscribed id -> line "canceled" (toString id) "unsubscribed"
         NoQueryPermission id str -> line "canceled" (toString id) ("noQueryPermission: " ++ str)
         QueryError id str -> line "canceled" (toString id) ("queryError: " ++ str)
 
-viewDataMsg : DataMsg -> String
-viewDataMsg dataMsg =
-  let k = key dataMsg.reference in
-  (if k == "" then "(root)" else k) ++ ": " ++ (viewValue dataMsg.value)
+viewSnapshot : Snapshot -> String
+viewSnapshot snapshot =
+  let k = key snapshot.reference in
+  (if k == "" then "(root)" else k) ++ ": " ++ (viewValue snapshot.value)
 
 viewValue : Maybe JE.Value -> String
 viewValue maybeValue = case maybeValue of
@@ -208,7 +208,7 @@ doOnce : String -> Query -> Location -> Task Error (Maybe JE.Value)
 doOnce step query location =
   intercept viewValue step
     ( once query location
-      `andThen` \dataMsg -> succeed dataMsg.value
+      `andThen` \snapshot -> succeed snapshot.value
     )
 
 doSleep : String -> Float -> Task () ()

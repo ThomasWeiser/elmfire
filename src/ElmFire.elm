@@ -4,7 +4,7 @@ module ElmFire
   , Priority (..)
   , Query
   , QueryId
-  , DataMsg
+  , Snapshot
   , Cancellation (..)
   , Error (..)
   , fromUrl, sub, parent, root, push, location, toUrl, key
@@ -29,7 +29,7 @@ module ElmFire
 child, added, changed, removed, moved
 
 # Query results
-@docs DataMsg, Cancellation
+@docs Snapshot, Cancellation
 
 # Error reporting
 @docs Error
@@ -105,12 +105,13 @@ type Cancellation
   | NoQueryPermission QueryId String
   | QueryError QueryId String
 
-{-| A received value.
+{-| Message about a received value.
+
 `queryId` can be used to correlate the response to the corresponding query.
 `value`is either `Just` a Json value
 or it is `Nothing` when the queried location doesn't exist.
 -}
-type alias DataMsg =
+type alias Snapshot =
   { queryId: QueryId
   , key: String
   , reference: Reference
@@ -251,7 +252,7 @@ The third parameter specifies the event to listen to:
 `valueChanged`, `child added`, `child changed`, `child removed` or `child moved`.
 The fourth parameter specifies the location to be queried.
 -}
-subscribe : (DataMsg -> Task x a) ->
+subscribe : (Snapshot -> Task x a) ->
             (Cancellation -> Task y b) ->
             Query ->
             Location ->
@@ -264,7 +265,7 @@ unsubscribe = Native.ElmFire.unsubscribe
 
 {-| Query a Firebase location once
 
-On success the tasks results in the desired DataMsg.
+On success the tasks results in the desired Snapshot.
 It results in an error if either the location is invalid
 or you have no permission to read this data.
 
@@ -272,7 +273,7 @@ The first parameter specifies the event to listen to:
 `valueChanged`, `child added`, `child changed`, `child removed` or `child moved`.
 The second parameter specifies the location to be queried.
 -}
-once : Query -> Location -> Task Error DataMsg
+once : Query -> Location -> Task Error Snapshot
 once = Native.ElmFire.once
 
 {-| Query value changes at the referenced location -}

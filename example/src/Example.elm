@@ -13,11 +13,11 @@ import Json.Encode as JE exposing (string, encode)
 
 import ElmFire exposing
   ( fromUrl, set, subscribe, valueChanged
-  , Reference, DataMsg, QueryId, Error
+  , Reference, Snapshot, QueryId, Error
   )
 
 -- You may want to change this url
-url = "https://elmfire.firebaseio-demo.com/test"
+url = "https://elmfire.firebaseio-demo.com/example"
 
 values : Mailbox (Maybe JE.Value)
 values = mailbox Nothing

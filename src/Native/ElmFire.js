@@ -181,26 +181,26 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 			var ref = getRef (location, callback);
 			if (ref) {
 				var queryId = nextQueryId ();
-				var onResponse = function (snapshot) {
-					var val = snapshot .val (), maybeVal;
+				var onResponse = function (fbSnapshot) {
+					var val = fbSnapshot .val (), maybeVal;
 					if (val === null) {
 						maybeVal = { ctor: 'Nothing' };
 					} else {
 						maybeVal = { ctor: 'Just', _0: val };
 					}
-					var key = snapshot .key ();
+					var key = fbSnapshot .key ();
 					if (key === null) {
 						key = '';
 					}
-					var dataMsg = {
+					var snapshot = {
 						_: {},
 						queryId: queryId,
 						key: key,
-						reference: snapshot .ref (),
+						reference: fbSnapshot .ref (),
 						value: maybeVal
 					};
 					setTimeout (function () {
-						Task .perform (createResponseTask (dataMsg));
+						Task .perform (createResponseTask (snapshot));
 					}, 0);
 				};
 				var onCancel = function (err) {
@@ -262,26 +262,26 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		return Task .asyncFunction (function (callback) {
 			var ref = getRef (location, callback);
 			if (ref) {
-				var onResponse = function (snapshot) {
-					var val = snapshot .val (), maybeVal;
+				var onResponse = function (fbSnapshot) {
+					var val = fbSnapshot .val (), maybeVal;
 					if (val === null) {
 						maybeVal = { ctor: 'Nothing' };
 					} else {
 						maybeVal = { ctor: 'Just', _0: val };
 					}
-					var key = snapshot .key ();
+					var key = fbSnapshot .key ();
 					if (key === null) {
 						key = '';
 					}
-					var dataMsg = {
+					var snapshot = {
 						_: {},
 						queryId: "once",
 						key: key,
-						reference: snapshot .ref (),
+						reference: fbSnapshot .ref (),
 						value: maybeVal
 					};
 					setTimeout (function () {
-						callback (Task.succeed (dataMsg));
+						callback (Task.succeed (snapshot));
 					}, 0);
 				};
 				var onCancel = function (err) {

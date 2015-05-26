@@ -71,8 +71,8 @@ Example:
 
 Only basic querying is supported in this early version of ElmFire, so no filtering, no sorting.
 
-    once        : Query -> Location -> Task Error DataMsg       
-    subscribe   : (DataMsg -> Task x a) ->
+    once        : Query -> Location -> Task Error Snapshot       
+    subscribe   : (Snapshot -> Task x a) ->
                   (Cancellation -> Task y b) ->
                   Query ->
                   Location ->
@@ -94,7 +94,7 @@ The fourth parameter references the queried location.
 
 On success the task returns a QueryId, which can be used to match the corresponding responses and to cancel the query.
 
-    type alias DataMsg =
+    type alias Snapshot =
       { queryId: QueryId
       , key: String
       , reference: Reference
@@ -105,7 +105,7 @@ On success the task returns a QueryId, which can be used to match the correspond
       | NoQueryPermission QueryId String
       | QueryError QueryId String
 
-A `DataMsg` carries the corresponding `QueryId` and `Just Value` for the Json value or `Nothing` if the location doesn't exist.
+A `Snapshot` carries the corresponding `QueryId` and `Just Value` for the Json value or `Nothing` if the location doesn't exist.
 
 `key` corresponds to the last part of the path.
 It is the empty string for the root.
@@ -113,7 +113,7 @@ Keys are relevant notably for child queries.
 
 Example:
 
-    responses : Signal.Mailbox (Maybe DataMsg)
+    responses : Signal.Mailbox (Maybe Snapshot)
     responses = Signal.mailbox Nothing
     
     port query : Task Error QueryId
@@ -126,11 +126,11 @@ Example:
     ... = Signal.map
             (\response -> case response of
                 Nothing -> ...
-                Just dataMsg -> ...
+                Just snapshot -> ...
             )
             responses.signal
     
-Notes on a possible change of the API: The `key` field of `DataMsg` is redundant and may be dropped, as `reference` also contains the key.
+Notes on a possible change of the API: The `key` field of `Snapshot` is redundant and may be dropped, as `reference` also contains the key.
 
 ## Example.elm
 
