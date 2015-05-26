@@ -19,8 +19,8 @@ import ElmFire exposing
 -- You may want to change this url
 url = "https://elmfire.firebaseio-demo.com/test"
 
-values : Signal.Mailbox (Maybe JE.Value)
-values = Signal.mailbox Nothing
+values : Mailbox (Maybe JE.Value)
+values = mailbox Nothing
 
 inputString : Mailbox String
 inputString = mailbox ""
