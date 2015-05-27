@@ -1,8 +1,8 @@
 
-ELM_MAIN = Test
+ELM_MAIN = Demo
 ELM_OUTPUT = elm.js
-STATIC = test.html
-BROWSER_TARGET = test.html
+STATIC = demo.html
+BROWSER_TARGET = demo.html
 
 SOURCE_DIR = src
 BUILD_DIR = build

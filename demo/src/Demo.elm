@@ -1,4 +1,4 @@
-{- A ElmFire Testing App
+{- A ElmFire Demo App
 
 A given sequence of tasks is run on the Firebase API.
 Steps and results are logged as Html.
@@ -18,14 +18,16 @@ import Debug
 
 import ElmFire exposing
   ( fromUrl, toUrl, key, sub, parent, root, push, location, open
-  , set, setWithPriority, setPriority, update, remove, subscribe, unsubscribe, once
+  , set, setWithPriority, setPriority, update, remove
+  , subscribe, unsubscribe, once
   , valueChanged, child, added, changed, removed, moved
-  , Location, Reference, Priority (..), Query, Cancellation (..), Snapshot, QueryId, Error (..)
+  , Location, Reference, Priority (..), Query, Cancellation (..)
+  , Snapshot, QueryId, Error (..)
   )
 
 -------------------------------------------------------------------------------
 
-url = "https://elmfire.firebaseio-demo.com/test"
+url = "https://elmfire.firebaseio-demo.com/demo"
 
 -------------------------------------------------------------------------------
 
@@ -92,7 +94,7 @@ state = Signal.foldp progression startModel logEntries
 view : Model -> Html
 view model =
   div []
-  [ h1  [] [text "ElmFire Test"]
+  [ h1  [] [text "ElmFire Demo"]
   , div [] [ a [href url, target "_blank"] [text url] ]
   , div [class "tasks"] ( h2 [] [text "Tasks"] :: viewTasks model.tasks)
   , div [class "logs"]  ( h2 [] [text "Log"] :: viewLog model.log )
@@ -126,7 +128,8 @@ viewTasks = List.map
 viewLogEntry : LogEntry -> Maybe Html
 viewLogEntry logEntry =
   let
-    line c s t = div [class "line"] [ span [] [text s], span [class c] [text t] ]
+    line c s t =
+      div [class "line"] [ span [] [text s], span [class c] [text t] ]
   in case logEntry of
   LogNone -> Nothing
   LogTaskStart step ->
@@ -137,11 +140,16 @@ viewLogEntry logEntry =
     Just <| line "failure" step err
   LogResponse response ->
     Just <| case response of
-      Data snapshot -> line "response" (toString snapshot.queryId) (viewSnapshot snapshot)
-      Canceled (cancellation) -> case cancellation of
-        Unsubscribed id -> line "canceled" (toString id) "unsubscribed"
-        NoQueryPermission id str -> line "canceled" (toString id) ("noQueryPermission: " ++ str)
-        QueryError id str -> line "canceled" (toString id) ("queryError: " ++ str)
+      Data snapshot ->
+        line "response" (toString snapshot.queryId) (viewSnapshot snapshot)
+      Canceled (cancellation) ->
+        case cancellation of
+          Unsubscribed id ->
+            line "canceled" (toString id) "unsubscribed"
+          NoQueryPermission id str ->
+            line "canceled" (toString id) ("noQueryPermission: " ++ str)
+          QueryError id str ->
+            line "canceled" (toString id) ("queryError: " ++ str)
 
 viewSnapshot : Snapshot -> String
 viewSnapshot snapshot =
@@ -162,11 +170,15 @@ intercept valueToString step task =
   Signal.send notes.address (LogTaskStart step)
   `andThen` \_ ->
     ( task
-      `onError` \err -> Signal.send notes.address (LogTaskFailure step (toString err))
-      `andThen` \_   -> fail err
+      `onError` \err ->
+        Signal.send notes.address (LogTaskFailure step (toString err))
+      `andThen` \_   ->
+        fail err
     )
-    `andThen` \val -> Signal.send notes.address (LogTaskSuccess step (valueToString val))
-    `andThen` \_   -> succeed val
+    `andThen` \val ->
+      Signal.send notes.address (LogTaskSuccess step (valueToString val))
+    `andThen` \_   ->
+      succeed val
 
 -------------------------------------------------------------------------------
 
@@ -273,7 +285,9 @@ port runTasks =
       (JE.object [("a", (JE.string "Hello")), ("d", (JE.string "Elmies"))])
       loc
   `andAnyway` ( doOpen "push open" (loc |> sub "e" |> push)
-                `andThen` \ref -> doSet "push set" (JE.string <| key ref) (location ref)
-                `andThen` \ref -> doSetPriority "setPriority" (NumPrio 17) (location ref)
+                `andThen`
+                \ref -> doSet "push set" (JE.string <| key ref) (location ref)
+                `andThen`
+                \ref -> doSetPriority "setPriority" (NumPrio 17) (location ref)
               )
   `andAnyway` succeed ()
