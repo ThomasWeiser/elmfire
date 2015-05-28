@@ -36,7 +36,6 @@ type Response
   | Data Snapshot
   | Canceled Cancellation
 
--- All query responses a reported through this mailbox
 responses : Signal.Mailbox Response
 responses = Signal.mailbox NoResponse
 
