@@ -81,9 +81,9 @@ which can be a number or a string.
 Priorities can be used for filtering and sorting entries in a query.
 -}
 type Priority
-  = NoPrio
-  | NumPrio Float
-  | StrPrio String
+  = NoPriority
+  | NumberPriority Float
+  | StringPriority String
 
 {-| Specifies the event this query listens to (valueChanged, child added, ...) -}
 type Query
@@ -107,15 +107,20 @@ type Cancellation
 
 {-| Message about a received value.
 
-`queryId` can be used to correlate the response to the corresponding query.
-`value`is either `Just` a Json value
-or it is `Nothing` when the queried location doesn't exist.
+- `queryId` can be used to correlate the response to the corresponding query.
+- `value`is either `Just` a Json value or it is `Nothing` when the queried location doesn't exist.
+- `reference` points to the queried location
+- `key` is relevant particular for child queries and specifies the key of the data.
+- `prevKey` specifies the key of previous child (or Nothing for the first child), revealing the ordering. It's always Nothing for valueChanged queries.
+- `priority` returns the given priority of the data.
 -}
 type alias Snapshot =
   { queryId: QueryId
   , key: String
   , reference: Reference
   , value: Maybe JE.Value
+  , prevKey: Maybe String
+  , priority: Priority
   }
 
 {-| Construct a new location from a full Firebase URL.

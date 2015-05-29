@@ -287,6 +287,6 @@ port runTasks =
                 `andThen`
                 \ref -> doSet "push set" (JE.string <| key ref) (location ref)
                 `andThen`
-                \ref -> doSetPriority "setPriority" (NumPrio 17) (location ref)
+                \ref -> doSetPriority "setPriority" (NumberPriority 17) (location ref)
               )
   `andAnyway` succeed ()

@@ -99,6 +99,8 @@ On success the task returns a QueryId, which can be used to match the correspond
       , key: String
       , reference: Reference
       , value: Maybe Value
+      , prevKey: Maybe String
+      , priority: Priority
       }
     type Cancellation
       = Unsubscribed QueryId

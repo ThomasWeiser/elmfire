@@ -176,29 +176,50 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		return eventType;
 	}
 
+	function convertSnapshot (queryId, fbSnapshot, prevKey) {
+		var val = fbSnapshot .val (), maybeVal;
+		if (val === null) {
+			maybeVal = { ctor: 'Nothing' };
+		} else {
+			maybeVal = { ctor: 'Just', _0: val };
+		}
+		var key = fbSnapshot .key ();
+		if (key === null) {
+			key = '';
+		}
+		var maybePrevKey;
+		if (prevKey) {
+			maybePrevKey = { ctor: 'Just', _0: prevKey };
+		} else {
+			maybePrevKey = { ctor: 'Nothing' };
+		}
+		var fbPriority = fbSnapshot .getPriority (), priority;
+		switch (toString.call (fbPriority)) {
+			case "[object Number]":
+				priority = { ctor: 'NumberPriority', _0: fbPriority }; break;
+			case "[object String]":
+				priority = { ctor: 'StringPriority', _0: fbPriority }; break;
+			default:
+				priority = { ctor: 'NoPriority' };
+		}
+		return {
+			_: {},
+			queryId: queryId,
+			key: key,
+			reference: fbSnapshot .ref (),
+			value: maybeVal,
+			prevKey: maybePrevKey,
+			priority: priority
+		};
+	}
+
 	function subscribe (createResponseTask, createCancellationTask, query, location) {
 		return Task .asyncFunction (function (callback) {
 			var ref = getRef (location, callback);
 			if (ref) {
 				var queryId = nextQueryId ();
-				var onResponse = function (fbSnapshot) {
-					var val = fbSnapshot .val (), maybeVal;
-					if (val === null) {
-						maybeVal = { ctor: 'Nothing' };
-					} else {
-						maybeVal = { ctor: 'Just', _0: val };
-					}
-					var key = fbSnapshot .key ();
-					if (key === null) {
-						key = '';
-					}
-					var snapshot = {
-						_: {},
-						queryId: queryId,
-						key: key,
-						reference: fbSnapshot .ref (),
-						value: maybeVal
-					};
+				var onResponse = function (fbSnapshot, prevKey) {
+					var snapshot = convertSnapshot (queryId, fbSnapshot, prevKey);
 					setTimeout (function () {
 						Task .perform (createResponseTask (snapshot));
 					}, 0);
@@ -262,24 +283,8 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		return Task .asyncFunction (function (callback) {
 			var ref = getRef (location, callback);
 			if (ref) {
-				var onResponse = function (fbSnapshot) {
-					var val = fbSnapshot .val (), maybeVal;
-					if (val === null) {
-						maybeVal = { ctor: 'Nothing' };
-					} else {
-						maybeVal = { ctor: 'Just', _0: val };
-					}
-					var key = fbSnapshot .key ();
-					if (key === null) {
-						key = '';
-					}
-					var snapshot = {
-						_: {},
-						queryId: "once",
-						key: key,
-						reference: fbSnapshot .ref (),
-						value: maybeVal
-					};
+				var onResponse = function (fbSnapshot, prevKey) {
+					var snapshot = convertSnapshot ("_once_", fbSnapshot, prevKey);
 					setTimeout (function () {
 						callback (Task.succeed (snapshot));
 					}, 0);

@@ -1,4 +1,4 @@
-{- A ElmFire Testing App
+{- A Sketch of a Test App for ElmFire
 
 A given sequence of tasks is run on the Firebase API.
 Steps and results are logged as Html.
@@ -74,8 +74,8 @@ viewReport (Line ok txt) =
 type alias Context = String
 type alias TestTask x a = Context -> (Task x a)
 
-runTest : Context -> TestTask x a -> Task x a
-runTest context testTask = testTask context
+runTest : TestTask x a -> Task x a
+runTest testTask = testTask "no test name"
 
 test : Task x a -> TestTask x a
 test task = \context -> task
@@ -106,18 +106,18 @@ meets description condition testTask =
         `andThen` \x -> succeed val
       )
 
-infixl 0 |>>
+infixl 1 |>>
 (|>>) : TestTask x a -> (TestTask x a -> TestTask x b) -> TestTask x b
 (|>>) = (|>)
 
-infixl 0 |>-
+infixl 1 |>-
 (|>-) : TestTask x a -> Task x b -> TestTask x b
 (|>-) testTask1 task2 =
   \context ->
     testTask1 context
     `andThen` \_ -> task2
 
-infixl 0 |>+
+infixl 1 |>+
 (|>+) : TestTask x a -> (a -> TestTask x b) -> TestTask x b
 (|>+) testTask1 callback2 =
   \context ->
@@ -126,17 +126,31 @@ infixl 0 |>+
       let testTask2 = callback2 res1 in
         testTask2 context
 
+suite : String -> TestTask x a -> TestTask x a
+suite name testTask =
+  \context ->
+    testTask name
+
 test1 =
-  test ( open (fromUrl url |> push) )
+  suite "test1" <|
+      test ( open (fromUrl url |> push) )
   |>> succeeds "open"
   |>> meets "opened ref" (\ref -> url `String.startsWith` toUrl ref )
-  |>+ \ref -> test ( set (JE.string "Hello Elmies") (location ref) )
+
+  |>+ \ref -> test ( setWithPriority (JE.string "Hello Elmies") (NumberPriority 42) (location ref) )
   |>> succeeds "set"
   |>> meets "set returned same ref" (\refSet -> toUrl refSet == toUrl ref)
+
   |>- (once valueChanged (location ref))
-  |>> succeeds "once"
+  |>> succeeds "once valueChanged (at child)"
   |>> meets "once returned same key" (\snapshot -> snapshot.key == key ref)
   |>> meets "once returned right value" (\snapshot -> snapshot.value == Just (JE.string "Hello Elmies"))
+  |>> meets "once returned right priority" (\snapshot -> snapshot.priority == NumberPriority 42)
+
+  |>- (once (child added) (fromUrl url))
+  |>> succeeds "once child added (at parent)"
+  |>> meets "once returned right value" (\snapshot -> snapshot.value == Just (JE.string "Hello Elmies"))
+  |>> meets "once returned right prevKey" (\snapshot -> snapshot.prevKey == Nothing)
 
 port runTasks : Task Error Snapshot
-port runTasks = runTest "test1" test1
+port runTasks = runTest test1
