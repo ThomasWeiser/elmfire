@@ -7,7 +7,7 @@ We aim to expose the complete [Firebase API](https://www.firebase.com/docs/web/)
 
 ## Constructing Firebase Locations
 
-To refer to a Firebase location you need a `Location`.
+To refer to a Firebase path you need a `Location`.
 Locations can be built with the following functions:
 
     -- Location is an opaque type.
@@ -37,7 +37,7 @@ Likewise, query results contain a reference to the location of the reported valu
 References can inform about the key or the complete URL of the referred location.
 And a reference may be converted back to a location, which can be used in a new task.
 
-Additionally, a location can be opened (without modifying or querying),
+There is a special task to open a location without modifying or querying it,
 which results in a reference if the location is valid.
 It's generally not necessary to explicitly open a constructed location,
 but it may be used to check the location or to cache Firebase references.
@@ -58,7 +58,7 @@ but it may be used to check the location or to cache Firebase references.
 
 These tasks complete when synchronization to the Firebase servers has completed.
 On success they result in a Reference to the modified location.
-The result in an error if the location is invalid or you have no permission to modify the data.
+They result in an error if the location is invalid or you have no permission to modify the data.
 
 Values are given as Json values, i.e. `Json.Encode.Value`.
 
