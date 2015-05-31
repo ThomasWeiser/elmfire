@@ -1,7 +1,12 @@
-{- A Sketch of a Test App for ElmFire
+module TaskTest
+  ( testMain
+  , runTest
+  , test, suite
+  , succeeds, meets
+  , (|>>), (|>+), (|>-)
+  ) where
 
-A given sequence of tasks is run on the Firebase API.
-Steps and results are logged as Html.
+{- A Sketch of a testing framework for task-based code.
 
 This is work in progress.
 We aim to make the logging output look much more nicer.
@@ -9,17 +14,9 @@ We aim to make the logging output look much more nicer.
 
 import Signal exposing (Signal, Mailbox, mailbox)
 import Task exposing (Task, andThen, onError, fail, succeed)
-import Json.Encode as JE
 import Html exposing (Html, div, span, text, a, h1, h2)
 import Html.Attributes exposing (href, target, class)
 import Debug
-import String
-
-import ElmFire exposing (..)
-
--------------------------------------------------------------------------------
-
-url = "https://elmfire.firebaseio-demo.com/test"
 
 -------------------------------------------------------------------------------
 
@@ -45,17 +42,16 @@ progression maybeReport model = case maybeReport of
 state : Signal Model
 state = Signal.foldp progression startModel reports.signal
 
-main = Signal.map view state
+testMain = Signal.map view state
 
 -------------------------------------------------------------------------------
 
 view : Model -> Html
 view model =
   div []
-  [ h1  [] [text "ElmFire Test"]
-  , div [] [ a [href url, target "_blank"] [text url] ]
-  , div [class "reports"] ( h2 [] [text "Reports"] :: viewReports model)
-  ]
+  ( h2 [] [text "Reports"]
+    :: viewReports model
+  )
 
 viewReports : Model -> List Html
 viewReports model = List.foldl -- reverses the list for display
@@ -131,26 +127,3 @@ suite name testTask =
   \context ->
     testTask name
 
-test1 =
-  suite "test1" <|
-      test ( open (fromUrl url |> push) )
-  |>> succeeds "open"
-  |>> meets "opened ref" (\ref -> url `String.startsWith` toUrl ref )
-
-  |>+ \ref -> test ( setWithPriority (JE.string "Hello Elmies") (NumberPriority 42) (location ref) )
-  |>> succeeds "set"
-  |>> meets "set returned same ref" (\refSet -> toUrl refSet == toUrl ref)
-
-  |>- (once valueChanged (location ref))
-  |>> succeeds "once valueChanged (at child)"
-  |>> meets "once returned same key" (\snapshot -> snapshot.key == key ref)
-  |>> meets "once returned right value" (\snapshot -> snapshot.value == Just (JE.string "Hello Elmies"))
-  |>> meets "once returned right priority" (\snapshot -> snapshot.priority == NumberPriority 42)
-
-  |>- (once (child added) (fromUrl url))
-  |>> succeeds "once child added (at parent)"
-  |>> meets "once returned right value" (\snapshot -> snapshot.value == Just (JE.string "Hello Elmies"))
-  |>> meets "once returned right prevKey" (\snapshot -> snapshot.prevKey == Nothing)
-
-port runTasks : Task Error Snapshot
-port runTasks = runTest test1

@@ -1,5 +1,5 @@
 
-ELM_MAIN = Test
+ELM_MAIN = Tests
 ELM_OUTPUT = elm.js
 STATIC = test.html
 BROWSER_TARGET = test.html
