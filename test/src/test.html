@@ -5,10 +5,43 @@
 <title>ElmFire Test</title>
 	<script type="text/javascript" src="elm.js"></script>
 	<style type="text/css">
+		body { box-sizing: border-box; }
 		h1 { font-size: larger; }
 		h2 { font-size: large; }
-		.report.success { background-color: #c7ffc0; }
-		.report.failure { background-color: #ffdbe0; }
+		.report {
+			background-color: #e0ddeb;
+			padding-bottom: 1px;
+		}
+		.header-sequence {
+			font-size: large;
+		}
+		.header-task {
+			font-weight: bold;
+		}
+		.step {
+			background-color: #ffffc0;
+			margin-left: 20px;
+			padding-bottom: 1px;
+			margin-bottom: 5px;
+		}
+		.step:first-child {
+			background-color: inherit;
+			margin-left: inherit;
+			margin-bottom: inherit;
+		}
+		.test {
+			margin-left: 20px;
+			margin-bottom: 3px;
+		}
+		.test.pass {
+			background-color: #c7ffc0;
+		}
+		.test.error {
+			background-color: #ffdbe0;
+		}
+		.header-sequence, .header-task, .test {
+			padding: 1px 3px;
+		}
 	</style>
 </head>
 
