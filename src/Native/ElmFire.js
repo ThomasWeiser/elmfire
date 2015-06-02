@@ -87,8 +87,6 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		};
 	}
 
-
-
 	function open (location) {
 		return Task .asyncFunction (function (callback) {
 			var ref = getRef (location, callback);

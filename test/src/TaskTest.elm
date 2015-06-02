@@ -2,7 +2,8 @@ module TaskTest
   ( testDisplay
   , runTest
   , test, sequence
-  , succeeds, meets
+  , succeeds, fails, equals, meets, errorMeets
+  , clear, createReporter, printResult, map
   , (|>>), (|>+), (|>-)
   ) where
 
@@ -22,7 +23,7 @@ import Debug
 -------------------------------------------------------------------------------
 
 type Report = Line String Activity String
-type Activity = RunSequence | RunTask | TestPass | TestError
+type Activity = RunSequence | RunTask | TestPass | TestError | TestPrint | RunReporter
 
 reports: Mailbox (Maybe Report)
 reports = mailbox Nothing
@@ -80,10 +81,12 @@ viewReport (Line context activity txt) =
   div
     [ class (
         case activity of
-        RunSequence -> "header-sequence"
-        RunTask     -> "header-task"
-        TestPass    -> "test pass"
-        TestError   -> "test error"
+        RunSequence  -> "header-sequence"
+        RunTask      -> "header-task"
+        RunReporter  -> "header-reporter"
+        TestPass     -> "test pass"
+        TestError    -> "test error"
+        TestPrint    -> "test print"
       )
     ]
     [text txt]
@@ -97,10 +100,22 @@ runTest : TestTask x a -> Task x a
 runTest testTask = testTask "no test name"
 
 test : String -> Task x a -> TestTask x a
-test description task = \context ->
-  report context RunTask description
-  `andThen`
-  \_ -> task
+test description task =
+  \context ->
+    report context RunTask description
+    `andThen`
+    \_ -> task
+
+createReporter: String -> TestTask y (b -> Task z ())
+createReporter description =
+  \context ->
+    report context RunReporter description
+    `andThen`
+    \_ -> succeed ( \val -> report context TestPrint (toString val) )
+
+clear: TestTask y ()
+clear =
+  \context -> succeed ()
 
 succeeds : TestTask x a -> TestTask x a
 succeeds testTask =
@@ -116,17 +131,76 @@ succeeds testTask =
         `andThen` \x -> succeed val
       )
 
+fails: TestTask x a -> TestTask x a
+fails testTask =
+  \context ->
+    ( testTask context
+      `onError` \err ->
+        ( report context TestPass "task failed as expected"
+          `andThen` \_ -> fail err
+        )
+    )
+    `andThen` \val ->
+      ( report context TestError "task succeeds unexpectedly"
+        `andThen` \x -> succeed val
+      )
+
+equals : String -> a -> TestTask x a -> TestTask x a
+equals description expectedValue =
+  meets description ((==) expectedValue)
+
 meets : String -> (a -> Bool) -> TestTask x a -> TestTask x a
 meets description condition testTask =
   \context ->
-    testTask context
+    ( testTask context
+      `onError` \err ->
+        ( report context TestError (description ++ " [task failed]")
+          `andThen` \_ -> fail err
+        )
+    )
     `andThen` \val ->
       ( ( if condition val
             then report context TestPass description
-            else report context TestError description
+            else report context TestError (description ++ " [unfulfilled]")
         )
         `andThen` \x -> succeed val
       )
+
+errorMeets : String -> (x -> Bool) -> TestTask x a -> TestTask x a
+errorMeets description condition testTask =
+  \context ->
+    ( testTask context
+      `onError` \err ->
+        ( ( if condition err
+              then report context TestPass description
+              else report context TestError (description ++ " [unfulfilled]")
+          )
+          `andThen` \_ -> fail err
+        )
+    )
+    `andThen` \val ->
+      ( report context TestError (description ++ " [task succeeds unexpectedly]")
+        `andThen` \x -> succeed val
+      )
+
+printResult : TestTask x a -> TestTask x a
+printResult testTask =
+  \context ->
+    ( testTask context
+      `onError` \err ->
+        ( report context TestPrint (toString (Err err))
+          `andThen` \_ -> fail err
+        )
+    )
+    `andThen` \val ->
+      ( report context TestPrint (toString (Ok val))
+        `andThen` \x -> succeed val
+      )
+
+map : (a -> b) -> TestTask x a -> TestTask x b
+map func testTask =
+  \context ->
+    Task.map func (testTask context)
 
 infixl 1 |>>
 (|>>) : TestTask x a -> (TestTask x a -> TestTask x b) -> TestTask x b
@@ -136,17 +210,17 @@ infixl 0 |>-
 (|>-) : TestTask x a -> TestTask x b -> TestTask x b
 (|>-) testTask1 task2 =
   \context ->
-    testTask1 (context ++ "(-1-)")
-    `andThen` \_ -> (task2 (context ++ "(-2-)"))
+    Task.toMaybe (testTask1 (context ++ "-1"))
+    `andThen` \_ -> (task2 (context ++ "-2"))
 
 infixl 0 |>+
 (|>+) : TestTask x a -> (a -> TestTask x b) -> TestTask x b
 (|>+) testTask1 callback2 =
   \context ->
-    testTask1 (context ++ "(+1+)")
+    testTask1 (context ++ "+1")
     `andThen` \res1 ->
       let testTask2 = callback2 res1 in
-        testTask2 (context ++ "(+2+)")
+        testTask2 (context ++ "+2")
 
 sequence : String -> TestTask x a -> TestTask x a
 sequence name testTask =

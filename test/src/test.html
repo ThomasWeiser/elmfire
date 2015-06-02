@@ -5,7 +5,10 @@
 <title>ElmFire Test</title>
 	<script type="text/javascript" src="elm.js"></script>
 	<style type="text/css">
-		body { box-sizing: border-box; }
+		body {
+			margin: 0;
+			box-sizing: border-box;
+		}
 		h1 { font-size: larger; }
 		h2 { font-size: large; }
 		.report {
@@ -17,6 +20,10 @@
 		}
 		.header-task {
 			font-weight: bold;
+		}
+		.header-reporter {
+			font-weight: bold;
+			font-style: italic;
 		}
 		.step {
 			background-color: #ffffc0;
@@ -39,6 +46,9 @@
 		.test.error {
 			background-color: #ffdbe0;
 		}
+		.test.print {
+			background-color: #d6eaff;
+		}
 		.header-sequence, .header-task, .test {
 			padding: 1px 3px;
 		}
@@ -46,6 +56,8 @@
 </head>
 
 <body>
-<script type="text/javascript">Elm.fullscreen (Elm.Main)</script>
+<script type="text/javascript">
+	Elm.fullscreen (Elm.Main)
+</script>
 </body>
 </html>

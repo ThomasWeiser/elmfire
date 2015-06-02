@@ -18,34 +18,80 @@ import ElmFire exposing (..)
 
 -------------------------------------------------------------------------------
 
-url = "https://elmfire.firebaseio-demo.com/test"
+url = "https://elmfiretest.firebaseio.com/test"
 
 -------------------------------------------------------------------------------
 
+isLocationError : Error -> Bool
+isLocationError err =
+  case err of
+    LocationError _ -> True
+    _ -> False
+
+isPermissionError : Error -> Bool
+isPermissionError err =
+  case err of
+    PermissionError _ -> True
+    _ -> False
+
+type Response
+  = NoResponse
+  | Data Snapshot
+  | Canceled Cancellation
 
 test1 =
   sequence "test1" (
-      test "open" ( open (fromUrl url |> push) )
+      test "clear test location" ( remove (fromUrl url) )
+  |>> succeeds
+
+  |>- test "open" ( open (fromUrl url |> push) )
   |>> succeeds
   |>> meets "url of opened ref starts with base-url" (\ref -> url `String.startsWith` toUrl ref )
 
-  |>+ \ref -> test "setWithPriority" ( setWithPriority (JE.string "Hello Elmies") (NumberPriority 42) (location ref) )
-  |>> succeeds
-  |>> meets "set returned same ref" (\refSet -> toUrl refSet == toUrl ref)
+  |>+ \ref
+   -> test "setWithPriority" ( setWithPriority (JE.string "Hello Elmies") (NumberPriority 42) (location ref) )
+  |>> meets "set returned same ref" (\refReturned -> toUrl refReturned == toUrl ref)
+  |>> map location
+  |>+ \loc
+   -> clear
 
-  |>- test "once valueChanged (at child)" (once valueChanged (location ref))
-  |>> succeeds
+  |>- test "once valueChanged (at child)" (once valueChanged loc)
+  |>> printResult
   |>> meets "once returned same key" (\snapshot -> snapshot.key == key ref)
   |>> meets "once returned right value" (\snapshot -> snapshot.value == Just (JE.string "Hello Elmies"))
-  |>> meets "once returned right priority" (\snapshot -> snapshot.priority == NumberPriority 42)
-
-  |>- test "once child added (at parent)" (once (child added) (fromUrl url))
-  |>> succeeds
-  |>> meets "once returned right value" (\snapshot -> snapshot.value == Just (JE.string "Hello Elmies"))
   |>> meets "once returned right prevKey" (\snapshot -> snapshot.prevKey == Nothing)
+  |>> map .priority
+  |>> equals "once returned right priority" (NumberPriority 42)
+
+  |>- createReporter "subscription results"
+  |>+ \reporter1
+   -> test "subscribe child added (at parent)"
+           (subscribe (Data >> reporter1) (Canceled >> reporter1) (child added) (fromUrl url))
+  |>> succeeds
+  |>> printResult
+
+  |>- test "set without permission" ( set (JE.null) (fromUrl url |> root |> sub "unaccessible") )
+  |>> printResult
+  |>> fails
+  |>> errorMeets "reports LocationError when locating root's parent" isPermissionError
+  |>- clear
+
+  |>- test "open root's parent" ( open (fromUrl url |> root |> parent) )
+  |>> printResult
+  |>> fails
+  |>> errorMeets "reports LocationError when locating root's parent" isLocationError
+  |>- clear
+
+  |>- test "open an invalid URL" ( open (fromUrl "not-a-url") )
+  |>> printResult
+  |>> fails
+  |>> errorMeets "reports LocationError" isLocationError
+  |>- clear
+
+  |>- clear
   )
 
-port runTasks : Task Error Snapshot
+port runTasks : Task Error ()
 port runTasks = runTest test1
 
 view : Html -> Html
