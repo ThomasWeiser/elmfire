@@ -6,8 +6,10 @@ This is work in progress.
 -}
 
 import String
+import Time
 import Task exposing (Task)
 import Json.Encode as JE
+import Json.Decode as JD
 import Html exposing (Html, div, span, text, a, h1, h2)
 import Html.Attributes exposing (href, target, class)
 import Debug
@@ -34,55 +36,128 @@ isPermissionError err =
     PermissionError _ -> True
     _ -> False
 
+action1 : Maybe JE.Value -> Action
+action1 maybeValue =
+  case maybeValue of
+    Just value ->
+      case JD.decodeValue JD.string value of
+        Ok str -> Set (JE.string <| str ++ "!")
+        _ -> Remove
+    _ -> Abort
+
+action1AsTask : Maybe JE.Value -> Task () Action
+action1AsTask maybeValue =
+  Task.succeed (action1 maybeValue)
+
 type Response
   = NoResponse
   | Data Snapshot
   | Canceled Cancellation
 
 test1 =
-  sequence "test1" (
-      test "clear test location" ( remove (fromUrl url) )
-  |>> succeeds
-
-  |>- test "open" ( open (fromUrl url |> push) )
+  sequence  "Test Sequence" (
+      test  "open" (open (fromUrl url |> push |> push))
   |>> succeeds
   |>> meets "url of opened ref starts with base-url" (\ref -> url `String.startsWith` toUrl ref )
 
   |>+ \ref
-   -> test "setWithPriority" ( setWithPriority (JE.string "Hello Elmies") (NumberPriority 42) (location ref) )
+   -> test  "setWithPriority" (setWithPriority (JE.string "Hello") (NumberPriority 42) (location ref))
   |>> meets "set returned same ref" (\refReturned -> toUrl refReturned == toUrl ref)
   |>> map location
   |>+ \loc
    -> clear
 
-  |>- test "once valueChanged (at child)" (once valueChanged loc)
+  |>- test  "once valueChanged (at child)" (once valueChanged loc)
   |>> printResult
   |>> meets "once returned same key" (\snapshot -> snapshot.key == key ref)
-  |>> meets "once returned right value" (\snapshot -> snapshot.value == Just (JE.string "Hello Elmies"))
+  |>> meets "once returned right value" (\snapshot -> snapshot.value == Just (JE.string "Hello"))
   |>> meets "once returned right prevKey" (\snapshot -> snapshot.prevKey == Nothing)
   |>> map .priority
   |>> equals "once returned right priority" (NumberPriority 42)
 
   |>- createReporter "subscription results"
   |>+ \reporter1
-   -> test "subscribe child added (at parent)"
-           (subscribe (Data >> reporter1) (Canceled >> reporter1) (child added) (fromUrl url))
+   -> test  "subscribe child added (at parent)"
+            (subscribe (Data >> reporter1) (Canceled >> reporter1) (child added) (parent loc))
   |>> succeeds
   |>> printResult
 
-  |>- test "set without permission" ( set (JE.null) (fromUrl url |> root |> sub "unaccessible") )
+  |>- test  "sleep 2s" ( Task.sleep (2 * Time.second) )
+  |>- test  "set another child" ( set (JE.string "Elmers") (loc |> parent |> push) )
+  |>> map key
+  |>> printResult
+
+  |>+ \key
+   -> test  "transaction on that child"
+            (transaction action1 (loc |> parent |> sub key) True)
+  |>> printResult
+  |>> meets "committed and returned changed value"
+            (\(committed, snapshot) ->
+                committed && snapshot.value == Just (JE.string "Elmers!")
+            )
+
+  |>- test  "transactionByTask on that child"
+            (transactionByTask action1AsTask (loc |> parent |> sub key) True)
+  |>> printResult
+  |>> meets "committed and returned changed value"
+            (\(committed, snapshot) ->
+                committed && snapshot.value == Just (JE.string "Elmers!!")
+            )
+
+  |>- test  "once valueChanged at non-existing location" (once valueChanged (sub "_non_existing_key_" loc))
+  |>> printResult
+  |>> meets "returns Nothing" (\snapshot -> snapshot.value == Nothing)
+
+  |>- test  "set without permission"
+            ( set (JE.null) (fromUrl url |> root |> sub "unaccessible") )
   |>> printResult
   |>> fails
-  |>> errorMeets "reports LocationError when locating root's parent" isPermissionError
+  |>> errorMeets "reports PermissionError" isPermissionError
   |>- clear
 
-  |>- test "open root's parent" ( open (fromUrl url |> root |> parent) )
+  |>- test  "once without permission"
+            ( once valueChanged (fromUrl url |> root |> sub "unaccessible") )
   |>> printResult
   |>> fails
-  |>> errorMeets "reports LocationError when locating root's parent" isLocationError
+  |>> errorMeets "reports PermissionError" isPermissionError
   |>- clear
 
-  |>- test "open an invalid URL" ( open (fromUrl "not-a-url") )
+  |>- createReporter "subscription without permission results"
+  |>+ \reporter2
+   -> test  "subscribe without permission"
+            ( subscribe (Data >> reporter2) (Canceled >> reporter2)
+                        valueChanged (fromUrl url |> root |> sub "unaccessible") )
+  |>> printResult
+  |>- clear
+
+  |>- test  "transaction without permission"
+            (transaction action1 (fromUrl url |> root |> sub "unaccessible") True)
+  |>> printResult
+  |>> meets "not committed" (\(committed, _) -> not committed)
+  |>- clear
+
+  |>- test  "open root's parent" ( open (fromUrl url |> root |> parent) )
+  |>> printResult
+  |>> fails
+  |>> errorMeets "reports LocationError" isLocationError
+  |>- clear
+
+  |>- test  "open an invalid URL" ( open (fromUrl "not-a-url") )
+  |>> printResult
+  |>> fails
+  |>> errorMeets "reports LocationError" isLocationError
+  |>- clear
+
+  |>- test  "subscribe with invalid URL"
+            ( subscribe (always Task.succeed ()) (always Task.succeed ())
+                        valueChanged (fromUrl "not-a-url") )
+  |>> printResult
+  |>> fails
+  |>> errorMeets "reports LocationError" isLocationError
+  |>- clear
+
+  |>- test  "transaction with invalid URL"
+            (transaction action1 (fromUrl "not-a-url") True)
   |>> printResult
   |>> fails
   |>> errorMeets "reports LocationError" isLocationError

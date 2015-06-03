@@ -132,8 +132,25 @@ Example:
             )
             responses.signal
     
-Notes on a possible change of the API: The `key` field of `Snapshot` is redundant and may be dropped, as `reference` also contains the key.
+## Transactions
 
+Atomic modifications of the data at a location can be done by transactions.
+
+A transaction takes an update function (or update task) that maps the previous
+value a new value. In case of a conflict with concurrent updates by different clients
+the update function is called again. 
+
+    transaction : (Maybe Value -> Action) ->
+                  Location ->
+                  Bool ->
+                  Task Error (Bool, Snapshot)
+    transactionByTask :
+                  (Maybe Value -> Task x Action) ->
+                  Location ->
+                  Bool ->
+                  Task Error (Bool, Snapshot)
+    type Action = Abort | Remove | Set Value
+              
 ## Example.elm
 
 There is a very basic example app in `example/src/Example.elm`. To build it:
@@ -148,11 +165,16 @@ Alternatively without using `make`:
 
 Prior to building you may want to put your own Firebase URL in it.
 
-## Test.elm
+## Testing
 
-I started a testing app, living in `test/src`. It runs a given sequence of tasks on the Firebase API and logs these steps along with the query results.
+I started a testing app, living in the directory `test`.
+It runs a given sequence of tasks on the Firebase API and logs these steps along with the query results.
+
+This app uses a small ad-hoc testing framework for task-based code. 
 
 There is a Makefile to build the app. On most Unix-like systems a `cd test; make all open` should do the trick.
+
+An older, still functional testing app lives in the directory `demo`.
 
 ## Future work
 

@@ -5,11 +5,12 @@ module ElmFire
   , Query
   , QueryId
   , Snapshot
+  , Action (..)
   , Cancellation (..)
   , Error (..)
   , fromUrl, sub, parent, root, push, location, toUrl, key
   , open, set, setWithPriority, setPriority, update, remove
-  , subscribe, unsubscribe, once
+  , subscribe, unsubscribe, once, transaction, transactionByTask
   , valueChanged, child, added, changed, removed, moved
   ) where
 
@@ -30,6 +31,9 @@ child, added, changed, removed, moved
 
 # Query results
 @docs Snapshot, Cancellation
+
+# Transactions
+@docs Action, transaction, transactionByTask
 
 # Error reporting
 @docs Error
@@ -102,8 +106,7 @@ type QueryId = QueryId
 {-| Message about cancelled query -}
 type Cancellation
   = Unsubscribed QueryId
-  | NoQueryPermission QueryId String
-  | QueryError QueryId String
+  | QueryError QueryId Error
 
 {-| Message about a received value.
 
@@ -122,6 +125,12 @@ type alias Snapshot =
   , prevKey: Maybe String
   , priority: Priority
   }
+
+{-| Possible return values for update functions of a transaction -}
+type Action
+  = Abort
+  | Remove
+  | Set JE.Value
 
 {-| Construct a new location from a full Firebase URL.
 
@@ -257,11 +266,11 @@ The third parameter specifies the event to listen to:
 `valueChanged`, `child added`, `child changed`, `child removed` or `child moved`.
 The fourth parameter specifies the location to be queried.
 -}
-subscribe : (Snapshot -> Task x a) ->
-            (Cancellation -> Task y b) ->
-            Query ->
-            Location ->
-            Task Error QueryId
+subscribe : (Snapshot -> Task x a)
+         -> (Cancellation -> Task y b)
+         -> Query
+         -> Location
+         -> Task Error QueryId
 subscribe = Native.ElmFire.subscribe
 
 {-| Cancel a query subscription -}
@@ -280,6 +289,37 @@ The second parameter specifies the location to be queried.
 -}
 once : Query -> Location -> Task Error Snapshot
 once = Native.ElmFire.once
+
+{-| Transaction: Atomically modify the data at a location
+
+First parameter is a function which will be passed the current data stored at this location (or Nothing if the location contains no data).
+The function returns an Action, which is either Set Value, or Abort, or Remove.
+The second parameter specifies the location at which the transaction should be performed.
+The third parameter denotes whether intermediate states are reported to local query subscriptions (True) or suppressed (False).
+
+On success the task returns a tuple:
+Its first element indicates whether the transaction was commited (True) or aborted (False).
+Regardless, the second element is a Snapshot containing the resulting data at that location.
+-}
+transaction : (Maybe JE.Value -> Action)
+           -> Location
+           -> Bool
+           -> Task Error (Bool, Snapshot)
+transaction = Native.ElmFire.transaction
+
+{-| Transaction with an update task: Atomically modify the data at a location
+
+This is the same as `transaction` with the exception that the new value is provided by
+running a task instead of a pure function.
+
+A failure of the update task results in a abortion of the transaction
+(same as success with `Abort`).
+-}
+transactionByTask : (Maybe JE.Value -> Task x Action)
+           -> Location
+           -> Bool
+           -> Task Error (Bool, Snapshot)
+transactionByTask = Native.ElmFire.transactionByTask
 
 {-| Query value changes at the referenced location -}
 valueChanged : Query
