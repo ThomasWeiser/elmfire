@@ -20,6 +20,8 @@ import ElmFire exposing (..)
 
 -------------------------------------------------------------------------------
 
+-- Use this test Firebase. The tests below rely on some settings in this Firebase.
+-- Individual executions of this test suite use independent branches in this Firebase.
 url = "https://elmfiretest.firebaseio.com/test"
 
 -------------------------------------------------------------------------------

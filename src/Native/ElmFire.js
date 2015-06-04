@@ -8,7 +8,6 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		return localRuntime.Native.ElmFire.values;
 	}
 
-	var Signal = Elm.Native.Signal.make (localRuntime);
 	var Task = Elm.Native.Task.make (localRuntime);
 	var Utils = Elm.Native.Utils.make (localRuntime);
 

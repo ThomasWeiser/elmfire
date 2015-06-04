@@ -24,14 +24,15 @@ They don't touch a real Firebase until the resulting location is used in one of 
 Example:
 
     location : Location
-    location = fromUrl "https://elmfire.firebaseio-demo.com/test"
-                 |> parent
-                 |> sub "anotherTest"`
-                 |> push
+    location = 
+      fromUrl "https://elmfire.firebaseio-demo.com/test"
+        |> parent
+        |> sub "anotherTest"`
+        |> push
 
 ## References to Locations
 
-Many actions on a Firebase location return a reference to that location in their results.
+Most actions on a Firebase location return a reference to that location.
 Likewise, query results contain a reference to the location of the reported value.
 
 References can inform about the key or the complete URL of the referred location.
@@ -65,8 +66,46 @@ Values are given as Json values, i.e. `Json.Encode.Value`.
 Example:
 
     port write : Task Error ()
-    port write = set (Json.Encode.string "foo") location
+    port write =
+      set (Json.Encode.string "new branch") (push location)
+      `andThen`
+      (\ref -> ... ref.key ... )
     
+## Transactions
+
+Atomic modifications of the data at a location can be done by transactions.
+
+A transaction takes an update function (or update task) that maps the previous
+value a new value. In case of a conflict with concurrent updates by different clients
+the update function is called again. 
+
+    transaction : (Maybe Value -> Action) ->
+                  Location ->
+                  Bool ->
+                  Task Error (Bool, Snapshot)
+    transactionByTask :
+                  (Maybe Value -> Task x Action) ->
+                  Location ->
+                  Bool ->
+                  Task Error (Bool, Snapshot)
+    type Action = Abort | Remove | Set Value
+              
+Example:
+
+    port trans : Task Error -> Task Error () 
+    port trans =
+      transaction
+        ( \maybeVal -> case maybeVal of
+            Just value ->
+              case Json.Decode.decodeValue Json.Decode.int value of
+                Ok counter -> Set (Json.Encode.int (counter + 1)
+                _          -> Abort
+            Nothing ->
+              Set (Json.Encode.int (1)
+        ) location False
+      `andThen`
+      (\\(committed, snapshot) -> ... )
+
 ## Querying
 
 Only basic querying is supported in this early version of ElmFire, so no filtering, no sorting.
@@ -104,8 +143,7 @@ On success the task returns a QueryId, which can be used to match the correspond
       }
     type Cancellation
       = Unsubscribed QueryId
-      | NoQueryPermission QueryId String
-      | QueryError QueryId String
+      | QueryError QueryId Error
 
 A `Snapshot` carries the corresponding `QueryId` and `Just Value` for the Json value or `Nothing` if the location doesn't exist.
 
@@ -119,11 +157,12 @@ Example:
     responses = Signal.mailbox Nothing
     
     port query : Task Error QueryId
-    port query = subscribe
-                   (Signal.send responses.address << Just)
-                   (always (Task.succeed ()))
-                   (child added)
-                   (fromUrl "https:...firebaseio.com/...")
+    port query =
+      subscribe
+        (Signal.send responses.address << Just)
+        (always (Task.succeed ()))
+        (child added)
+        (fromUrl "https:...firebaseio.com/...")
     
     ... = Signal.map
             (\response -> case response of
@@ -132,25 +171,6 @@ Example:
             )
             responses.signal
     
-## Transactions
-
-Atomic modifications of the data at a location can be done by transactions.
-
-A transaction takes an update function (or update task) that maps the previous
-value a new value. In case of a conflict with concurrent updates by different clients
-the update function is called again. 
-
-    transaction : (Maybe Value -> Action) ->
-                  Location ->
-                  Bool ->
-                  Task Error (Bool, Snapshot)
-    transactionByTask :
-                  (Maybe Value -> Task x Action) ->
-                  Location ->
-                  Bool ->
-                  Task Error (Bool, Snapshot)
-    type Action = Abort | Remove | Set Value
-              
 ## Example.elm
 
 There is a very basic example app in `example/src/Example.elm`. To build it:
@@ -183,6 +203,7 @@ There are a lot of features I plan to add in the near future:
 * Querying: filtering and sorting
 * Transactions
 * Authentication
+* Synchronization of Dicts, Lists, Arrays
 * Better test app
 * A nice example app
 
