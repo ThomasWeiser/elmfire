@@ -75,9 +75,10 @@ Example:
 
 Atomic modifications of the data at a location can be done by transactions.
 
-A transaction takes an update function (or update task) that maps the previous
-value a new value. In case of a conflict with concurrent updates by different clients
-the update function is called again. 
+A transaction takes an update function (or alternatively an update task)
+that maps the previous value to a new value.
+In case of a conflict with concurrent updates by other clients
+the update function is called repeatedly until no more conflict is encountered.
 
     transaction : (Maybe Value -> Action) ->
                   Location ->
@@ -104,7 +105,7 @@ Example:
               Set (Json.Encode.int (1)
         ) location False
       `andThen`
-      (\\(committed, snapshot) -> ... )
+      (\(committed, snapshot) -> ... )
 
 ## Querying
 
