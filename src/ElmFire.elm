@@ -31,8 +31,8 @@ module ElmFire
 @docs set, setWithPriority, setPriority,  update, remove
 
 # Querying
-@docs Query, QueryId, subscribe, unsubscribe, valueChanged,
-child, added, changed, removed, moved
+@docs Query, QueryId, subscribe, unsubscribe,
+valueChanged, childAdded, childChanged, childRemoved, childMoved
 
 # Ordering
 @docs orderByChild, orderByValue, orderByKey, orderByPriority
@@ -299,10 +299,14 @@ and to unsubscribe the query.
 The query results are reported via running a supplied task.
 
 The first parameter is a function used to construct that task from a response.
+
 The second parameter is a function used to construct a task that is run
 when the query gets canceled.
+
 The third parameter specifies the event to listen to:
-`valueChanged`, `child added`, `child changed`, `child removed` or `child moved`.
+`valueChanged`, `childAdded`, `childChanged`, `childRemoved` or `childMoved`.
+Additionally, this parameter can also specify ordering, filtering and limiting of the query (see below).
+
 The fourth parameter specifies the location to be queried.
 -}
 subscribe : (Snapshot -> Task x a)
@@ -322,13 +326,16 @@ On success the tasks results in the desired Snapshot.
 It results in an error if either the location is invalid
 or you have no permission to read this data.
 
-The first parameter specifies the event to listen to:
-`valueChanged`, `child added`, `child changed`, `child removed` or `child moved`.
+The third parameter specifies the event to listen to:
+`valueChanged`, `childAdded`, `childChanged`, `childRemoved` or `childMoved`.
+Additionally, this parameter can also specify ordering, filtering and limiting of the query (see below).
+
 The second parameter specifies the location to be queried.
 -}
 once : Query q -> Location -> Task Error Snapshot
 once = Native.ElmFire.once
 
+{-| A query secification: event type, ordering, filtering, limiting -}
 type alias Query a = { a | tag : QueryOptions }
 
 type QueryOptions = QueryOptions
