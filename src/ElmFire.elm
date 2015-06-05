@@ -11,7 +11,12 @@ module ElmFire
   , fromUrl, sub, parent, root, push, location, toUrl, key
   , open, set, setWithPriority, setPriority, update, remove
   , subscribe, unsubscribe, once, transaction, transactionByTask
-  , valueChanged, child, added, changed, removed, moved
+  , valueChanged, childAdded, childChanged, childRemoved, childMoved
+  , orderByChild, orderByValue, orderByKey, orderByPriority
+  , startAtValue, startAtKey, startAtPriority
+  , endAtValue, endAtKey, endAtPriority
+  , limitToFirst, limitToLast
+  , toSnapshotList, toValueList, toKeyList,toPairList
   ) where
 
 {-| Elm bindings to Firebase.
@@ -29,8 +34,17 @@ module ElmFire
 @docs Query, QueryId, subscribe, unsubscribe, valueChanged,
 child, added, changed, removed, moved
 
+# Ordering
+@docs orderByChild, orderByValue, orderByKey, orderByPriority
+
+# Filtering
+@docs startAtValue, startAtKey, startAtPriority, endAtValue, endAtKey, endAtPriority
+
+# Limiting
+@docs limitToFirst, limitToLast
+
 # Query results
-@docs Snapshot, Cancellation
+@docs Snapshot, Cancellation, toSnapshotList, toValueList, toKeyList,toPairList
 
 # Transactions
 @docs Action, transaction, transactionByTask
@@ -41,6 +55,7 @@ child, added, changed, removed, moved
 
 import Native.Firebase
 import Native.ElmFire
+import Array
 import Json.Encode as JE
 import Signal exposing (Address)
 import Task exposing (Task)
@@ -89,17 +104,6 @@ type Priority
   | NumberPriority Float
   | StringPriority String
 
-{-| Specifies the event this query listens to (valueChanged, child added, ...) -}
-type Query
-  = ValueChanged
-  | Child ChildQuery
-
-type ChildQuery
-  = Added
-  | Changed
-  | Removed
-  | Moved
-
 {-| Unique opaque identifier for each executed query -}
 type QueryId = QueryId
 
@@ -124,7 +128,10 @@ type alias Snapshot =
   , value: Maybe JE.Value
   , prevKey: Maybe String
   , priority: Priority
+  , intern_: SnapshotFB
   }
+
+type SnapshotFB = SnapshotFB
 
 {-| Possible return values for update functions of a transaction -}
 type Action
@@ -248,48 +255,6 @@ or you have no permission to remove this data.
 remove : Location -> Task Error Reference
 remove = Native.ElmFire.remove
 
-{-| Query a Firebase location by subscription
-
-(This early version of ElmFire only supports simple value queries,
-without ordering and filtering.)
-
-On success the task returns a QueryId,
-which can be used to match the corresponding responses
-and to unsubscribe the query.
-
-The query results are reported via running a supplied task.
-
-The first parameter is a function used to construct that task from a response.
-The second parameter is a function used to construct a task that is run
-when the query gets canceled.
-The third parameter specifies the event to listen to:
-`valueChanged`, `child added`, `child changed`, `child removed` or `child moved`.
-The fourth parameter specifies the location to be queried.
--}
-subscribe : (Snapshot -> Task x a)
-         -> (Cancellation -> Task y b)
-         -> Query
-         -> Location
-         -> Task Error QueryId
-subscribe = Native.ElmFire.subscribe
-
-{-| Cancel a query subscription -}
-unsubscribe : QueryId -> Task Error ()
-unsubscribe = Native.ElmFire.unsubscribe
-
-{-| Query a Firebase location once
-
-On success the tasks results in the desired Snapshot.
-It results in an error if either the location is invalid
-or you have no permission to read this data.
-
-The first parameter specifies the event to listen to:
-`valueChanged`, `child added`, `child changed`, `child removed` or `child moved`.
-The second parameter specifies the location to be queried.
--}
-once : Query -> Location -> Task Error Snapshot
-once = Native.ElmFire.once
-
 {-| Transaction: Atomically modify the data at a location
 
 First parameter is a function which will be passed the current data stored at this location (or Nothing if the location contains no data).
@@ -321,26 +286,201 @@ transactionByTask : (Maybe JE.Value -> Task x Action)
            -> Task Error (Bool, Snapshot)
 transactionByTask = Native.ElmFire.transactionByTask
 
-{-| Query value changes at the referenced location -}
-valueChanged : Query
-valueChanged = ValueChanged
 
-{-| Query child changes at the referenced location -}
-child : ChildQuery -> Query
-child = Child
+{-| Query a Firebase location by subscription
+
+(This early version of ElmFire only supports simple value queries,
+without ordering and filtering.)
+
+On success the task returns a QueryId,
+which can be used to match the corresponding responses
+and to unsubscribe the query.
+
+The query results are reported via running a supplied task.
+
+The first parameter is a function used to construct that task from a response.
+The second parameter is a function used to construct a task that is run
+when the query gets canceled.
+The third parameter specifies the event to listen to:
+`valueChanged`, `child added`, `child changed`, `child removed` or `child moved`.
+The fourth parameter specifies the location to be queried.
+-}
+subscribe : (Snapshot -> Task x a)
+         -> (Cancellation -> Task y b)
+         -> Query q
+         -> Location
+         -> Task Error QueryId
+subscribe = Native.ElmFire.subscribe
+
+{-| Cancel a query subscription -}
+unsubscribe : QueryId -> Task Error ()
+unsubscribe = Native.ElmFire.unsubscribe
+
+{-| Query a Firebase location once
+
+On success the tasks results in the desired Snapshot.
+It results in an error if either the location is invalid
+or you have no permission to read this data.
+
+The first parameter specifies the event to listen to:
+`valueChanged`, `child added`, `child changed`, `child removed` or `child moved`.
+The second parameter specifies the location to be queried.
+-}
+once : Query q -> Location -> Task Error Snapshot
+once = Native.ElmFire.once
+
+type alias Query a = { a | tag : QueryOptions }
+
+type QueryOptions = QueryOptions
+emptyOptions =
+  { tag = QueryOptions, noOrder = True, noLimit = True, noStart = True, noEnd = True }
+
+type QueryEvent =
+  ValueChanged | ChildAdded | ChildChanged | ChildRemoved | ChildMoved
+
+{-| Query value changes at the referenced location -}
+valueChanged = { emptyOptions | queryEvent = ValueChanged }
 
 {-| Query child added -}
-added : ChildQuery
-added = Added
+childAdded   = { emptyOptions | queryEvent = ChildAdded }
 
 {-| Query child changed -}
-changed : ChildQuery
-changed = Changed
+childChanged = { emptyOptions | queryEvent = ChildChanged }
 
 {-| Query child removed -}
-removed : ChildQuery
-removed = Removed
+childRemoved = { emptyOptions | queryEvent = ChildRemoved }
 
 {-| Query child moved -}
-moved : ChildQuery
-moved = Moved
+childMoved   = { emptyOptions | queryEvent = ChildMoved }
+
+{-| Order query results by the value of a named child -}
+orderByChild : String
+  -> { r | noOrder : a }
+  -> { r | orderByChildOrValue : Maybe String }
+orderByChild key query = { query - noOrder | orderByChildOrValue = Just key }
+
+{-| Order query results by value -}
+orderByValue :
+     { r | noOrder : a }
+  -> { r | orderByChildOrValue : Maybe String }
+orderByValue query = { query - noOrder | orderByChildOrValue = Nothing }
+
+{-| Order query results by key -}
+orderByKey :
+     { r | noOrder : a }
+  -> { r | orderByKey : Bool }
+orderByKey query = { query - noOrder | orderByKey = True }
+
+{-| Order query results first by priority, then by key -}
+orderByPriority :
+     { r | noOrder : a }
+  -> { r | orderByPriority : Bool }
+orderByPriority query = { query - noOrder | orderByPriority = True }
+
+{-| Filter query results by a given start value
+
+The value has to be atomar (number, string, boolean or null).
+
+This is only valid after sorting by value or by child.
+-}
+startAtValue : JE.Value
+  -> { r | noStart : a, orderByChildOrValue : o }
+  -> { r | orderByChildOrValue : o, startAtValue: JE.Value }
+startAtValue value query =
+  { query - noStart | startAtValue = value }
+
+{-| Filter query results by a given end value
+
+The value has to be atomar (number, string, boolean or null).
+
+This is only valid after sorting by value or by child.
+-}
+endAtValue : JE.Value
+  -> { r | noEnd : a, orderByChildOrValue : o }
+  -> { r | orderByChildOrValue : o, endAtValue: JE.Value }
+endAtValue value query =
+  { query - noEnd | endAtValue = value }
+
+{-| Filter query results by a given start key
+
+This is only valid after sorting by key.
+-}
+startAtKey : String
+  -> { r | noStart : a, orderByKey : o }
+  -> { r | orderByKey : o, startAtKey: String }
+startAtKey key query =
+  { query - noStart | startAtKey = key }
+
+{-| Filter query results by a given end key
+
+This is only valid after sorting by key.
+-}
+endAtKey : String
+  -> { r | noEnd : a, orderByKey : o }
+  -> { r | orderByKey : o, endAtKey: String }
+endAtKey key query =
+  { query - noEnd | endAtKey = key }
+
+{-| Filter query results by a given start priority (and key if given)
+
+This is only valid after sorting by priority.
+-}
+startAtPriority : Priority -> Maybe String
+  -> { r | noStart : a, orderByPriority : o }
+  -> { r | orderByPriority : o, startAtPriority: (Priority, Maybe String) }
+startAtPriority priority key query =
+  { query - noStart | startAtPriority = (priority, key) }
+
+{-| Filter query results by a given end priority (and key if given)
+
+This is only valid after sorting by priority.
+-}
+endAtPriority : Priority -> Maybe String
+  -> { r | noEnd : a, orderByPriority : o }
+  -> { r | orderByPriority : o, endAtPriority: (Priority, Maybe String) }
+endAtPriority priority key query =
+  { query - noEnd | endAtPriority = (priority, key) }
+
+{-| Limit the query to the first certain number of children.
+
+The number must be a positive integer.
+When combined with ordering and filtering, limiting is done after that steps.
+-}
+limitToFirst : Int
+  -> { r | noLimit : a }
+  -> { r | limitToFirst : Int }
+limitToFirst num query = { query - noLimit | limitToFirst = num }
+
+{-| Limit the query to the last certain number of children.
+
+The number must be a positive integer.
+When combined with ordering and filtering, limiting is done after that steps.
+-}
+limitToLast : Int
+  -> { r | noLimit : a }
+  -> { r | limitToLast : Int }
+limitToLast num query = { query - noLimit | limitToLast = num }
+
+
+{-| Convert a snapshot's children into a list of snapshots
+
+Ordering of the children is presevered.
+So, if the snapshot results from a ordered valueChanged-query
+then toList allows for map this ordering to a list.
+
+NB: The field .prevKey is not set in the listed snapshots.
+-}
+toSnapshotList : Snapshot -> List Snapshot
+toSnapshotList = Native.ElmFire.toSnapshotList
+
+{-| Convert a snapshot's children into a list of its values -}
+toValueList : Snapshot -> List JE.Value
+toValueList = Native.ElmFire.toValueList
+
+{-| Convert a snapshot's children into a list of its keys -}
+toKeyList : Snapshot -> List String
+toKeyList = Native.ElmFire.toKeyList
+
+{-| Convert a snapshot's children into a list of key-value-pairs -}
+toPairList : Snapshot -> List (String, JE.Value)
+toPairList = Native.ElmFire.toPairList

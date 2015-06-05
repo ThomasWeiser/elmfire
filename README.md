@@ -109,8 +109,6 @@ Example:
 
 ## Querying
 
-Only basic querying is supported in this early version of ElmFire, so no filtering, no sorting.
-
     once        : Query -> Location -> Task Error Snapshot       
     subscribe   : (Snapshot -> Task x a) ->
                   (Cancellation -> Task y b) ->
@@ -120,7 +118,9 @@ Only basic querying is supported in this early version of ElmFire, so no filteri
     unsubscribe : QueryId -> Task Error ()
     
 Use `once` to listen to exactly one event of the given type.
-The first parameter specifies the event to listen to: `valueChanged`, `child added`, `child changed`, `child removed` or `child moved`.
+The first parameter specifies the event to listen to: `valueChanged`, `childAdded`, `childChanged`, `childRemoved` or `childMoved`.
+Additionally, this parameter can also specify ordering, filtering and limiting of the query (see below).
+
 The second parameter references the queried location.
 
 Use `subscribe` to start querying the specified events.
@@ -129,10 +129,10 @@ which are reported via running a supplied task.
 
 The first parameter of `subscribe` is a function used to construct that task from a data message.
 The second parameter is a function used to construct a task that is run when the query gets canceled.
-The third parameter specifies the event to listen to: `valueChanged`, `child added`, `child changed`, `child removed` or `child moved`.
-The fourth parameter references the queried location.
 
-On success the task returns a QueryId, which can be used to match the corresponding responses and to cancel the query.
+The third and fourth parameter of `subscribe` are the same as the first two of `once`.
+
+On success the `subscribe` task returns a QueryId, which can be used to match the corresponding responses and to cancel the query.
 
     type alias Snapshot =
       { queryId: QueryId
@@ -171,6 +171,25 @@ Example:
                 Just snapshot -> ...
             )
             responses.signal
+            
+## Ordering, Filtering and Limiting Queries
+
+Query results can be ordered (by value, by a child's value, by key or by priority),
+filtered by giving a start and/or end value,
+and limited to the first or last certain number of children.
+            
+Example queries to be used in once and subscribe:
+            
+    childAdded |> limitToFirst 2
+    childAdded |> orderByValue
+    childAdded |> orderByChild "size"
+    childAdded |> orderByKey
+    childAdded |> orderByPriority
+    childAdded |> orderByValue |> startAtValue "foo"
+    childAdded |> orderByValue |> startAtValue "foo" | limitToLast 10
+    childAdded |> orderByChild "size" |> startAtValue 42 |> endAtValue 42
+    childAdded |> orderByKey |> endAtKey "d"
+    childAdded |> orderByPriority |> startAtPriority (NumberPriority 17) (Just "d")
     
 ## Example.elm
 
@@ -201,8 +220,6 @@ An older, still functional testing app lives in the directory `demo`.
 
 There are a lot of features I plan to add in the near future:
 
-* Querying: filtering and sorting
-* Transactions
 * Authentication
 * Synchronization of Dicts, Lists, Arrays
 * Better test app

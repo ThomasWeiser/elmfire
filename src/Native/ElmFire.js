@@ -8,8 +8,9 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		return localRuntime.Native.ElmFire.values;
 	}
 
-	var Task = Elm.Native.Task.make (localRuntime);
 	var Utils = Elm.Native.Utils.make (localRuntime);
+	var Task = Elm.Native.Task.make (localRuntime);
+	var List = Elm.Native.List.make (localRuntime);
 
 	var pleaseReportThis = ' Should not happen, please report this as a bug in ElmFire!'
 
@@ -18,6 +19,27 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 			return { ctor: 'Nothing' };
 		} else {
 			return { ctor: 'Just', _0: value };
+		}
+	}
+
+	function fromMaybe (maybe) {
+		return maybe.ctor === 'Nothing' ? null : maybe._0;
+	}
+
+	function encodePriority (elmPriority) {
+		return elmPriority.ctor === 'NoPriority' ? null : elmPriority._0;
+	}
+
+	function decodePriority (fbPriority) {
+		switch (toString.call (fbPriority)) {
+			case "[object Number]":
+				return {ctor: 'NumberPriority', _0: fbPriority};
+				break;
+			case "[object String]":
+				return {ctor: 'StringPriority', _0: fbPriority};
+				break;
+			default:
+				return {ctor: 'NoPriority'};
 		}
 	}
 
@@ -122,8 +144,8 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		return Task .asyncFunction (function (callback) {
 			var ref = getRef (location, callback);
 			if (ref) {
-				var prio = priority.ctor === 'NoPrio' ? null : priority._0;
-				try { ref.setWithPriority (value, prio, onCompleteFn (callback, ref)); }
+				try { ref.setWithPriority
+				        (value, encodePriority (priority), onCompleteFn (callback, ref)); }
 				catch (exception) { callback (exTaskFail (exception)); }
 			}
 		});
@@ -133,8 +155,8 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		return Task .asyncFunction (function (callback) {
 			var ref = getRef (location, callback);
 			if (ref) {
-				var prio = priority.ctor === 'NoPrio' ? null : priority._0;
-				try { ref.setPriority (prio, onCompleteFn (callback, ref)); }
+				try { ref.setPriority
+				        (encodePriority (priority), onCompleteFn (callback, ref)); }
 				catch (exception) { callback (exTaskFail (exception)); }
 			}
 		});
@@ -156,138 +178,6 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 			if (ref) {
 				try { ref.remove (onCompleteFn (callback, ref)); }
 				catch (exception) { callback (exTaskFail (exception)); }
-			}
-		});
-	}
-
-	var qNum = 0;
-	var queries = {};
-
-	function nextQueryId () {
-		return 'q' + ++qNum;
-	}
-
-	function queryEventType (query) {
-		var eventType = 'Bad query type.' + pleaseReportThis;
-		if (query.ctor === 'ValueChanged') {
-			eventType = 'value';
-		} else if (query.ctor === 'Child') {
-			switch (query._0.ctor) {
-				case 'Added':   eventType = 'child_added'; break;
-				case 'Changed': eventType = 'child_changed'; break;
-				case 'Removed': eventType = 'child_removed'; break;
-				case 'Moved':   eventType = 'child_moved'; break;
-			}
-		}
-		return eventType;
-	}
-
-	function convertSnapshot (queryId, fbSnapshot, prevKey) {
-		var key = fbSnapshot .key ();
-		if (key === null) {
-			key = '';
-		}
-		var fbPriority = fbSnapshot .getPriority (), priority;
-		switch (toString.call (fbPriority)) {
-			case "[object Number]":
-				priority = { ctor: 'NumberPriority', _0: fbPriority }; break;
-			case "[object String]":
-				priority = { ctor: 'StringPriority', _0: fbPriority }; break;
-			default:
-				priority = { ctor: 'NoPriority' };
-		}
-		return {
-			_: {},
-			queryId: queryId,
-			key: key,
-			reference: fbSnapshot .ref (),
-			value: asMaybe (fbSnapshot .val ()),
-			prevKey: asMaybe (prevKey),
-			priority: priority
-		};
-	}
-
-	function subscribe (createResponseTask, createCancellationTask, query, location) {
-		return Task .asyncFunction (function (callback) {
-			var ref = getRef (location, callback);
-			if (ref) {
-				var queryId = nextQueryId ();
-				var onResponse = function (fbSnapshot, prevKey) {
-					var snapshot = convertSnapshot (queryId, fbSnapshot, prevKey);
-					setTimeout (function () {
-						Task .perform (createResponseTask (snapshot));
-					});
-				};
-				var onCancel = function (err) {
-					var cancellation = {
-						ctor: 'QueryError',
-						_0: queryId,
-						_1: fbTaskError (err)
-					};
-					setTimeout (function () {
-						Task .perform (createCancellationTask (cancellation));
-					});
-				};
-				var eventType = queryEventType (query);
-				queries [queryId] = {
-					ref: ref,
-					eventType: eventType,
-					callback: onResponse,
-					createCancellationTask: createCancellationTask
-				};
-				try { ref.on (eventType, onResponse, onCancel); }
-				catch (exception) {
-					callback (exTaskFail (exception));
-					return;
-				}
-				callback (Task.succeed (queryId));
-			}
-		});
-	}
-
-	function unsubscribe (queryId) {
-		return Task .asyncFunction (function (callback) {
-			if (queryId in queries) {
-				var query = queries [queryId];
-				delete queries [queryId];
-				try { query.ref.off (query.eventType, query.callback); }
-				catch (exception) {
-					callback (exTaskFail (exception));
-					return;
-				}
-				setTimeout (function () {
-					Task.perform (query.createCancellationTask ({
-						ctor: 'Unsubscribed', _0: queryId
-					}));
-				});
-				callback (Task.succeed (Utils.Tuple0));
-			} else {
-				callback (Task.fail ({ ctor: 'UnknownQueryId' }));
-			}
-		});
-	}
-
-	function once (query, location) {
-		return Task .asyncFunction (function (callback) {
-			var ref = getRef (location, callback);
-			if (ref) {
-				var onResponse = function (fbSnapshot, prevKey) {
-					var snapshot = convertSnapshot ("_once_", fbSnapshot, prevKey);
-					setTimeout (function () {
-						callback (Task.succeed (snapshot));
-					});
-				};
-				var onCancel = function (err) {
-					var error = fbTaskFail (err);
-					setTimeout (function () {
-						callback (error);
-					});
-				};
-				var eventType = queryEventType (query);
-				try { ref.once (eventType, onResponse, onCancel); }
-				catch (exception) {
-					callback (exTaskFail (exception));
-				}
 			}
 		});
 	}
@@ -365,6 +255,220 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		});
 	}
 
+	var qNum = 0;
+	var queries = {};
+
+	function nextQueryId () {
+		return 'q' + ++qNum;
+	}
+
+	function queryEventType (query) {
+		var eventType = 'Bad query type.' + pleaseReportThis;
+		if (query.queryEvent) {
+			switch (query.queryEvent.ctor) {
+				case 'ValueChanged': eventType = 'value'; break;
+				case 'ChildAdded':   eventType = 'child_added'; break;
+				case 'ChildChanged': eventType = 'child_changed'; break;
+				case 'ChildRemoved': eventType = 'child_removed'; break;
+				case 'ChildMoved':   eventType = 'child_moved'; break;
+			}
+		}
+		return eventType;
+	}
+
+	function queryOrderAndFilter (query, ref) {
+		if (query.orderByChildOrValue) {
+			if (query.orderByChildOrValue.ctor == "Just") {
+				ref = ref.orderByChild (query.orderByChildOrValue._0)
+			} else {
+				ref = ref.orderByValue ()
+			}
+		}
+		if (query.orderByKey) {
+			ref = ref.orderByKey ()
+		}
+		if (query.orderByPriority) {
+			ref = ref.orderByPriority ()
+		}
+
+		if (query.startAtValue) {
+			ref = ref.startAt  (query.startAtValue);
+		}
+		if (query.endAtValue) {
+			ref = ref.endAt  (query.endAtValue);
+		}
+		if (query.startAtKey) {
+			ref = ref.startAt  (query.startAtKey);
+		}
+		if (query.endAtKey) {
+			ref = ref.endAt  (query.endAtKey);
+		}
+		var prio, key;
+		if (query.startAtPriority) {
+			prio = encodePriority (query.startAtPriority._0);
+			key  = fromMaybe (query.startAtPriority._1);
+			if (key === null) {
+				ref = ref.startAt (prio)
+			} else {
+				ref = ref.startAt (prio, key)
+			}
+		}
+		if (query.endAtPriority) {
+			prio = encodePriority (query.endAtPriority._0);
+			key  = fromMaybe (query.endAtPriority._1);
+			if (key === null) {
+				ref = ref.endAt (prio)
+			} else {
+				ref = ref.endAt (prio, key)
+			}
+		}
+
+		if (query.limitToFirst) {
+			ref = ref.limitToFirst (query.limitToFirst);
+		}
+		if (query.limitToLast) {
+			ref = ref.limitToLast (query.limitToLast);
+		}
+
+		return ref;
+	}
+
+	function convertSnapshot (queryId, fbSnapshot, prevKey) {
+		var key = fbSnapshot .key ();
+		if (key === null) {
+			key = '';
+		}
+		return {
+			_: {},
+			queryId: queryId,
+			key: key,
+			reference: fbSnapshot .ref (),
+			value: asMaybe (fbSnapshot .val ()),
+			prevKey: asMaybe (prevKey),
+			priority: decodePriority (fbSnapshot .getPriority ()),
+			intern_: fbSnapshot
+		};
+	}
+
+	function subscribe (createResponseTask, createCancellationTask, query, location) {
+		return Task .asyncFunction (function (callback) {
+			var ref = getRef (location, callback);
+			if (ref) {
+				var queryId = nextQueryId ();
+				var onResponse = function (fbSnapshot, prevKey) {
+					var snapshot = convertSnapshot (queryId, fbSnapshot, prevKey);
+					setTimeout (function () {
+						Task .perform (createResponseTask (snapshot));
+					});
+				};
+				var onCancel = function (err) {
+					var cancellation = {
+						ctor: 'QueryError',
+						_0: queryId,
+						_1: fbTaskError (err)
+					};
+					setTimeout (function () {
+						Task .perform (createCancellationTask (cancellation));
+					});
+				};
+				var eventType = queryEventType (query);
+				queries [queryId] = {
+					ref: ref,
+					eventType: eventType,
+					callback: onResponse,
+					createCancellationTask: createCancellationTask
+				};
+				try { queryOrderAndFilter (query, ref)
+					    .on (eventType, onResponse, onCancel); }
+				catch (exception) {
+					callback (exTaskFail (exception));
+					return;
+				}
+				callback (Task.succeed (queryId));
+			}
+		});
+	}
+
+	function unsubscribe (queryId) {
+		return Task .asyncFunction (function (callback) {
+			if (queryId in queries) {
+				var query = queries [queryId];
+				delete queries [queryId];
+				try { query.ref.off (query.eventType, query.callback); }
+				catch (exception) {
+					callback (exTaskFail (exception));
+					return;
+				}
+				setTimeout (function () {
+					Task.perform (query.createCancellationTask ({
+						ctor: 'Unsubscribed', _0: queryId
+					}));
+				});
+				callback (Task.succeed (Utils.Tuple0));
+			} else {
+				callback (Task.fail ({ ctor: 'UnknownQueryId' }));
+			}
+		});
+	}
+
+	function once (query, location) {
+		return Task .asyncFunction (function (callback) {
+			var ref = getRef (location, callback);
+			if (ref) {
+				var onResponse = function (fbSnapshot, prevKey) {
+					var snapshot = convertSnapshot ("_once_", fbSnapshot, prevKey);
+					setTimeout (function () {
+						callback (Task.succeed (snapshot));
+					});
+				};
+				var onCancel = function (err) {
+					var error = fbTaskFail (err);
+					setTimeout (function () {
+						callback (error);
+					});
+				};
+				var eventType = queryEventType (query);
+				try { queryOrderAndFilter (query, ref)
+					    .once (eventType, onResponse, onCancel); }
+				catch (exception) {
+					callback (exTaskFail (exception));
+				}
+			}
+		});
+	}
+
+	function toSnapshotList (snapshot) {
+		return toListGeneric (snapshot, function (fbChildSnapshot) {
+			return convertSnapshot ("_child_", fbChildSnapshot, null);
+		});
+	}
+
+	function toValueList (snapshot) {
+		return toListGeneric (snapshot, function (fbChildSnapshot) {
+			return fbChildSnapshot .val ();
+		});
+	}
+
+	function toKeyList (snapshot) {
+		return toListGeneric (snapshot, function (fbChildSnapshot) {
+			return fbChildSnapshot .key ();
+		});
+	}
+
+	function toPairList (snapshot) {
+		return toListGeneric (snapshot, function (fbChildSnapshot) {
+			return Utils.Tuple2 (fbChildSnapshot .key (), fbChildSnapshot .val ());
+		});
+	}
+
+	function toListGeneric (snapshot, mapSnapshot) {
+		var arr = [];
+		snapshot .intern_ .forEach (function (fbChildSnapshot) {
+			arr .push (mapSnapshot (fbChildSnapshot));
+		});
+		return List.fromArray (arr);
+	}
+
 	return localRuntime.Native.ElmFire.values =
 	{	toUrl: toUrl
   , key: key
@@ -374,10 +478,14 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 	,	setPriority: F2 (setPriority)
 	,	update: F2 (update)
 	,	remove: remove
+	,	transaction: F3 (transaction)
+	,	transactionByTask: F3 (transactionByTask)
 	,	subscribe: F4 (subscribe)
 	,	unsubscribe: unsubscribe
 	,	once: F2 (once)
-	,	transaction: F3 (transaction)
-	,	transactionByTask: F3 (transactionByTask)
+	, toSnapshotList: toSnapshotList
+	,	toValueList: toValueList
+	,	toKeyList: toKeyList
+	,	toPairList: toPairList
 	};
 };

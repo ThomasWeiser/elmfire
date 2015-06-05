@@ -3,7 +3,7 @@ module TaskTest
   , runTest
   , test, sequence
   , succeeds, fails, equals, meets, errorMeets
-  , clear, createReporter, printResult, map
+  , clear, createReporter, map, printResult, printString
   , (|>>), (|>+), (|>-)
   ) where
 
@@ -23,7 +23,8 @@ import Debug
 -------------------------------------------------------------------------------
 
 type Report = Line String Activity String
-type Activity = RunSequence | RunTask | TestPass | TestError | TestPrint | RunReporter
+type Activity = RunSequence | RunTask | TestPass | TestError
+              | TestPrint | TestPrintPre | RunReporter
 
 reports: Mailbox (Maybe Report)
 reports = mailbox Nothing
@@ -87,6 +88,7 @@ viewReport (Line context activity txt) =
         TestPass     -> "test pass"
         TestError    -> "test error"
         TestPrint    -> "test print"
+        TestPrintPre -> "test print pre"
       )
     ]
     [text txt]
@@ -128,7 +130,7 @@ succeeds testTask =
     )
     `andThen` \val ->
       ( report context TestPass "task succeeds"
-        `andThen` \x -> succeed val
+        `andThen` \_ -> succeed val
       )
 
 fails: TestTask x a -> TestTask x a
@@ -142,7 +144,7 @@ fails testTask =
     )
     `andThen` \val ->
       ( report context TestError "task succeeds unexpectedly"
-        `andThen` \x -> succeed val
+        `andThen` \_ -> succeed val
       )
 
 equals : String -> a -> TestTask x a -> TestTask x a
@@ -163,7 +165,7 @@ meets description condition testTask =
             then report context TestPass description
             else report context TestError (description ++ " [unfulfilled]")
         )
-        `andThen` \x -> succeed val
+        `andThen` \_ -> succeed val
       )
 
 errorMeets : String -> (x -> Bool) -> TestTask x a -> TestTask x a
@@ -180,7 +182,7 @@ errorMeets description condition testTask =
     )
     `andThen` \val ->
       ( report context TestError (description ++ " [task succeeds unexpectedly]")
-        `andThen` \x -> succeed val
+        `andThen` \_ -> succeed val
       )
 
 printResult : TestTask x a -> TestTask x a
@@ -194,7 +196,16 @@ printResult testTask =
     )
     `andThen` \val ->
       ( report context TestPrint (toString (Ok val))
-        `andThen` \x -> succeed val
+        `andThen` \_ -> succeed val
+      )
+
+printString : TestTask x String -> TestTask x String
+printString testTask =
+  \context ->
+    testTask context
+    `andThen` \str ->
+      ( report context TestPrintPre str
+        `andThen` \_ -> succeed str
       )
 
 map : (a -> b) -> TestTask x a -> TestTask x b

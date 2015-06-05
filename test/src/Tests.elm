@@ -6,6 +6,7 @@ This is work in progress.
 -}
 
 import String
+import List
 import Time
 import Task exposing (Task)
 import Json.Encode as JE
@@ -22,7 +23,7 @@ import ElmFire exposing (..)
 
 -- Use this test Firebase. The tests below rely on some settings in this Firebase.
 -- Individual executions of this test suite use independent branches in this Firebase.
-url = "https://elmfiretest.firebaseio.com/test"
+url = "https://elmfiretest.firebaseio.com/"
 
 -------------------------------------------------------------------------------
 
@@ -56,9 +57,11 @@ type Response
   | Data Snapshot
   | Canceled Cancellation
 
+dino = fromUrl url |> sub "dinosaur-facts"
+
 test1 =
   sequence  "Test Sequence" (
-      test  "open" (open (fromUrl url |> push |> push))
+      test  "open" (open (fromUrl url |> sub "test" |> push |> push))
   |>> succeeds
   |>> meets "url of opened ref starts with base-url" (\ref -> url `String.startsWith` toUrl ref )
 
@@ -80,11 +83,16 @@ test1 =
   |>- createReporter "subscription results"
   |>+ \reporter1
    -> test  "subscribe child added (at parent)"
-            (subscribe (Data >> reporter1) (Canceled >> reporter1) (child added) (parent loc))
+            ( subscribe
+                (Data >> reporter1)
+                (Canceled >> reporter1)
+                childAdded
+                (parent loc)
+            )
   |>> succeeds
   |>> printResult
 
-  |>- test  "sleep 2s" ( Task.sleep (2 * Time.second) )
+  |>- test  "sleep 1s" ( Task.sleep (1 * Time.second) )
   |>- test  "set another child" ( set (JE.string "Elmers") (loc |> parent |> push) )
   |>> map key
   |>> printResult
@@ -111,14 +119,14 @@ test1 =
   |>> meets "returns Nothing" (\snapshot -> snapshot.value == Nothing)
 
   |>- test  "set without permission"
-            ( set (JE.null) (fromUrl url |> root |> sub "unaccessible") )
+            ( set (JE.null) (fromUrl url |> sub "unaccessible") )
   |>> printResult
   |>> fails
   |>> errorMeets "reports PermissionError" isPermissionError
   |>- clear
 
   |>- test  "once without permission"
-            ( once valueChanged (fromUrl url |> root |> sub "unaccessible") )
+            ( once valueChanged (fromUrl url |> sub "unaccessible") )
   |>> printResult
   |>> fails
   |>> errorMeets "reports PermissionError" isPermissionError
@@ -128,12 +136,12 @@ test1 =
   |>+ \reporter2
    -> test  "subscribe without permission"
             ( subscribe (Data >> reporter2) (Canceled >> reporter2)
-                        valueChanged (fromUrl url |> root |> sub "unaccessible") )
+                        valueChanged (fromUrl url |> sub "unaccessible") )
   |>> printResult
   |>- clear
 
   |>- test  "transaction without permission"
-            (transaction action1 (fromUrl url |> root |> sub "unaccessible") True)
+            (transaction action1 (fromUrl url |> sub "unaccessible") True)
   |>> printResult
   |>> meets "not committed" (\(committed, _) -> not committed)
   |>- clear
@@ -151,8 +159,10 @@ test1 =
   |>- clear
 
   |>- test  "subscribe with invalid URL"
-            ( subscribe (always Task.succeed ()) (always Task.succeed ())
-                        valueChanged (fromUrl "not-a-url") )
+            ( subscribe
+              (always Task.succeed ()) (always Task.succeed ())
+              valueChanged (fromUrl "not-a-url")
+            )
   |>> printResult
   |>> fails
   |>> errorMeets "reports LocationError" isLocationError
@@ -164,6 +174,98 @@ test1 =
   |>> fails
   |>> errorMeets "reports LocationError" isLocationError
   |>- clear
+
+  |>- test  "dino" (once valueChanged dino)
+  |>> map (.value >> Maybe.withDefault (JE.null) >> JE.encode 2)
+  |>> printString
+
+  |>- test  "toSnapshotList" (once valueChanged (dino |> sub "scores"))
+  |>> map toSnapshotList
+  |>> printResult
+
+  |>- test  "dinos, ordered by child 'height', limited to last 2"
+            ( once
+                (valueChanged |> orderByChild "height" |> limitToLast 2)
+                (dino |> sub "dinosaurs")
+            )
+  |>> map (toValueList >> JE.list >> JE.encode 2)
+  |>> printString
+
+  |>- createReporter "subscription results: dino scores, ordered by value, limited to first 3"
+  |>+ \reporterDino
+   -> test  "subscribe dino scores, ordered by value, limited to first 3"
+            ( subscribe
+                (Data >> reporterDino)
+                (Canceled >> reporterDino)
+                (childAdded |> orderByValue |> limitToFirst 3)
+                (dino |> sub "scores")
+            )
+  |>> printResult
+
+  |>- test  "dinos, ordered by key, limited to first 2"
+            ( once
+                (valueChanged |> orderByKey |> limitToFirst 2)
+                (dino |> sub "dinosaurs")
+            )
+  |>> map (toKeyList >> String.join " ")
+  |>> printString
+
+  |>- test  "dinos, limited to first 2"
+            ( once
+                (valueChanged |> limitToFirst 2)
+                (dino |> sub "dinosaurs")
+            )
+  |>> map (toKeyList >> String.join " ")
+  |>> printString
+
+  |>- test  "order by priority"
+            ( once (valueChanged |> orderByPriority) (parent loc)
+            )
+  |>> map (toSnapshotList >> List.map .priority)
+  |>> printResult
+
+  |>- test  "order by priority, start at priority number 10"
+            ( once
+                (valueChanged |> orderByPriority
+                              |> startAtPriority (NumberPriority 10) Nothing)
+                (parent loc)
+            )
+  |>> map (toSnapshotList >> List.map .priority)
+  |>> printResult
+
+  |>- test  "order by priority, end at priority number 10"
+            ( once
+                (valueChanged |> orderByPriority
+                              |> endAtPriority (NumberPriority 10) Nothing)
+                (parent loc)
+            )
+  |>> map (toSnapshotList >> List.map .priority)
+  |>> printResult
+
+  |>- test  "order by child 'height', start at value 3, end at value 10"
+            ( once
+                (valueChanged |> orderByChild "height"
+                              |> startAtValue (JE.int 3) |> endAtValue (JE.int 10))
+                (dino |> sub "dinosaurs")
+            )
+  |>> map (toPairList >> JE.object >> JE.encode 2)
+  |>> printString
+
+  |>- test  "dinos, ordered by key, starting with letter 'l'"
+            ( once
+                (valueChanged |> orderByKey |> startAtKey "l" |> endAtKey "l~")
+                (dino |> sub "dinosaurs")
+            )
+  |>> map (toKeyList >> String.join " ")
+  |>> printString
+
+  |>- test  "dinos, ordered by prioriy, start at NoPriority and key 's'"
+            ( once
+                (valueChanged |> orderByPriority |> startAtPriority NoPriority (Just "s"))
+                (dino |> sub "dinosaurs")
+            )
+  |>> map (toKeyList >> String.join " ")
+  |>> printString
 
   |>- clear
   )

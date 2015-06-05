@@ -20,9 +20,9 @@ import ElmFire exposing
   ( fromUrl, toUrl, key, sub, parent, root, push, location, open
   , set, setWithPriority, setPriority, update, remove
   , subscribe, unsubscribe, once
-  , valueChanged, child, added, changed, removed, moved
-  , Location, Reference, Priority (..), Query, Cancellation (..)
-  , Snapshot, QueryId, Error (..)
+  , valueChanged, childAdded, childChanged, childRemoved, childMoved
+  , Location, Reference, Priority (..), Cancellation (..)
+  , Snapshot, QueryId, Error (..), Query
   )
 
 -------------------------------------------------------------------------------
@@ -145,10 +145,8 @@ viewLogEntry logEntry =
         case cancellation of
           Unsubscribed id ->
             line "canceled" (toString id) "unsubscribed"
-          NoQueryPermission id str ->
-            line "canceled" (toString id) ("noQueryPermission: " ++ str)
-          QueryError id str ->
-            line "canceled" (toString id) ("queryError: " ++ str)
+          QueryError id err ->
+            line "canceled" (toString id) ("queryError: " ++ toString err)
 
 viewSnapshot : Snapshot -> String
 viewSnapshot snapshot =
@@ -201,7 +199,7 @@ doRemove : String -> Location -> Task Error Reference
 doRemove step location =
   intercept (always "synced") step (remove location)
 
-doSubscribe : String -> Query -> Location -> Task Error QueryId
+doSubscribe : String -> Query q -> Location -> Task Error QueryId
 doSubscribe step query location =
   intercept toString step
     ( subscribe
@@ -215,7 +213,7 @@ doUnsubscribe : String -> QueryId -> Task Error ()
 doUnsubscribe step queryId =
   intercept (always "done") step (unsubscribe queryId)
 
-doOnce : String -> Query -> Location -> Task Error (Maybe JE.Value)
+doOnce : String -> Query q -> Location -> Task Error (Maybe JE.Value)
 doOnce step query location =
   intercept viewValue step
     ( once query location
@@ -264,10 +262,10 @@ port runTasks =
   `andAnyway` doSet "set2 value" (JE.string "hello") loc
   `andAnyway` doOpen "root" (loc |> root)
   `andAnyway` doOpen "open bad" (loc |> root |> parent)
-  `andAnyway` doSubscribe "query3 child added" (child added) loc
-  `andAnyway` doSubscribe "query4 child changed" (child changed) loc
-  `andAnyway` doSubscribe "query5 child removed" (child removed) loc
-  `andAnyway` doSubscribe "query6 child moved" (child moved) loc
+  `andAnyway` doSubscribe "query3 child added" (childAdded) loc
+  `andAnyway` doSubscribe "query4 child changed" (childChanged) loc
+  `andAnyway` doSubscribe "query5 child removed" (childRemoved) loc
+  `andAnyway` doSubscribe "query6 child moved" (childMoved) loc
   `andAnyway` doSleep "2" 2
   `andAnyway` doSet "set3 object value"
       (JE.object [("a", (JE.string "hello")), ("b", (JE.string "Elm"))])
