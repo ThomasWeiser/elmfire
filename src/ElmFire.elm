@@ -473,7 +473,7 @@ limitToLast num query = { query - noLimit | limitToLast = num }
 
 Ordering of the children is presevered.
 So, if the snapshot results from a ordered valueChanged-query
-then toList allows for map this ordering to a list.
+then toList allows for conserving this ordering as a list.
 
 NB: The field .prevKey is not set in the listed snapshots.
 -}

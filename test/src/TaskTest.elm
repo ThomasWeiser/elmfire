@@ -82,13 +82,13 @@ viewReport (Line context activity txt) =
   div
     [ class (
         case activity of
-        RunSequence  -> "header-sequence"
-        RunTask      -> "header-task"
-        RunReporter  -> "header-reporter"
-        TestPass     -> "test pass"
-        TestError    -> "test error"
-        TestPrint    -> "test print"
-        TestPrintPre -> "test print pre"
+          RunSequence  -> "header-sequence"
+          RunTask      -> "header-task"
+          RunReporter  -> "header-reporter"
+          TestPass     -> "test pass"
+          TestError    -> "test error"
+          TestPrint    -> "test print"
+          TestPrintPre -> "test print pre"
       )
     ]
     [text txt]

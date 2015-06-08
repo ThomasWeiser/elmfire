@@ -32,10 +32,10 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 
 	function decodePriority (fbPriority) {
 		switch (toString.call (fbPriority)) {
-			case "[object Number]":
+			case '[object Number]':
 				return {ctor: 'NumberPriority', _0: fbPriority};
 				break;
-			case "[object String]":
+			case '[object String]':
 				return {ctor: 'StringPriority', _0: fbPriority};
 				break;
 			default:
@@ -51,7 +51,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 			ref = getRefUnsafe (location._1) .child (location._0);
 		} else if (location.ctor === 'ParentLocation') {
 			ref = getRefUnsafe (location._0) .parent ();
-			if (! ref) { throw ("Error: Root has no parent"); }
+			if (! ref) { throw ('Error: Root has no parent'); }
 		} else if (location.ctor === 'RootLocation') {
 			ref = getRefUnsafe (location._0) .root ();
 		} else if (location.ctor === 'PushLocation') {
@@ -200,7 +200,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 							callback (fbTaskFail (err));
 						});
 					} else {
-						var snapshot = convertSnapshot ("_transaction_", fbSnapshot, null);
+						var snapshot = convertSnapshot ('_transaction_', fbSnapshot, null);
 						var res = Utils.Tuple2 (committed, snapshot);
 						setTimeout (function () {
 							callback (Task.succeed (res));
@@ -240,7 +240,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 							callback (fbTaskFail (err));
 						});
 					} else {
-						var snapshot = convertSnapshot ("_transaction_", fbSnapshot, null);
+						var snapshot = convertSnapshot ('_transaction_', fbSnapshot, null);
 						var res = Utils.Tuple2 (committed, snapshot);
 						setTimeout (function () {
 							callback (Task.succeed (res));
@@ -278,7 +278,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 
 	function queryOrderAndFilter (query, ref) {
 		if (query.orderByChildOrValue) {
-			if (query.orderByChildOrValue.ctor == "Just") {
+			if (query.orderByChildOrValue.ctor == 'Just') {
 				ref = ref.orderByChild (query.orderByChildOrValue._0)
 			} else {
 				ref = ref.orderByValue ()
@@ -416,7 +416,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 			var ref = getRef (location, callback);
 			if (ref) {
 				var onResponse = function (fbSnapshot, prevKey) {
-					var snapshot = convertSnapshot ("_once_", fbSnapshot, prevKey);
+					var snapshot = convertSnapshot ('_once_', fbSnapshot, prevKey);
 					setTimeout (function () {
 						callback (Task.succeed (snapshot));
 					});
@@ -438,9 +438,14 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 	}
 
 	function toSnapshotList (snapshot) {
-		return toListGeneric (snapshot, function (fbChildSnapshot) {
-			return convertSnapshot ("_child_", fbChildSnapshot, null);
+		var arr = [], prevKey = '';
+		snapshot .intern_ .forEach (function (fbChildSnapshot) {
+			var childSnapshot = convertSnapshot ('_child_', fbChildSnapshot, null);
+			childSnapshot .prevKey = prevKey;
+			prevKey = childSnapshot .key;
+			arr .push (childSnapshot);
 		});
+		return List.fromArray (arr);
 	}
 
 	function toValueList (snapshot) {
