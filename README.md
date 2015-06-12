@@ -10,25 +10,29 @@ We aim to expose the complete [Firebase API](https://www.firebase.com/docs/web/)
 To refer to a Firebase path you need a `Location`.
 Locations can be built with the following functions:
 
-    -- Location is an opaque type.
-    fromUrl  : String -> Location
-    sub      : String -> Location -> Location
-    parent   : Location -> Location
-    root     : Location -> Location
-    push     : Location -> Location
-    location : Reference -> Location
+```elm
+-- Location is an opaque type.
+fromUrl  : String -> Location
+sub      : String -> Location -> Location
+parent   : Location -> Location
+root     : Location -> Location
+push     : Location -> Location
+location : Reference -> Location
+```
             
 These are all pure functions.
 They don't touch a real Firebase until the resulting location is used in one of the tasks outlined below.
 
 Example:
 
-    location : Location
-    location = 
-      fromUrl "https://elmfire.firebaseio-demo.com/test"
-        |> parent
-        |> sub "anotherTest"`
-        |> push
+```elm
+location : Location
+location = 
+  fromUrl "https://elmfire.firebaseio-demo.com/test"
+    |> parent
+    |> sub "anotherTest"`
+    |> push
+```
 
 ## References to Locations
 
@@ -43,19 +47,23 @@ which results in a reference if the location is valid.
 It's generally not necessary to explicitly open a constructed location,
 but it may be used to check the location or to cache Firebase references.
 
-    -- Reference is an opaque type
-    key      : Reference -> String
-    toUrl    : Reference -> String
-    location : Reference -> Location
-    open     : Location -> Task Error Reference
+```elm
+-- Reference is an opaque type
+key      : Reference -> String
+toUrl    : Reference -> String
+location : Reference -> Location
+open     : Location -> Task Error Reference
+```
 
 ## Modifying Values
 
-    set             : Value -> Location -> Task Error Reference
-    setWithPriority : Value -> Priority -> Location -> Task Error Reference
-    setPriority     : Priority -> Location -> Task Error Reference
-    update          : Value -> Location -> Task Error Reference
-    remove          : Location -> Task Error Reference
+```elm
+set             : Value -> Location -> Task Error Reference
+setWithPriority : Value -> Priority -> Location -> Task Error Reference
+setPriority     : Priority -> Location -> Task Error Reference
+update          : Value -> Location -> Task Error Reference
+remove          : Location -> Task Error Reference
+```
 
 These tasks complete when synchronization to the Firebase servers has completed.
 On success they result in a Reference to the modified location.
@@ -65,11 +73,13 @@ Values are given as Json values, i.e. `Json.Encode.Value`.
 
 Example:
 
-    port write : Task Error ()
-    port write =
-      set (Json.Encode.string "new branch") (push location)
-      `andThen`
-      (\ref -> ... ref.key ... )
+```elm
+port write : Task Error ()
+port write =
+  set (Json.Encode.string "new branch") (push location)
+  `andThen`
+  (\ref -> ... ref.key ... )
+```
     
 ## Transactions
 
@@ -80,42 +90,48 @@ that maps the previous value to a new value.
 In case of a conflict with concurrent updates by other clients
 the update function is called repeatedly until no more conflict is encountered.
 
-    transaction : (Maybe Value -> Action) ->
-                  Location ->
-                  Bool ->
-                  Task Error (Bool, Snapshot)
-    transactionByTask :
-                  (Maybe Value -> Task x Action) ->
-                  Location ->
-                  Bool ->
-                  Task Error (Bool, Snapshot)
-    type Action = Abort | Remove | Set Value
+```elm
+transaction : (Maybe Value -> Action) ->
+              Location ->
+              Bool ->
+              Task Error (Bool, Snapshot)
+transactionByTask :
+              (Maybe Value -> Task x Action) ->
+              Location ->
+              Bool ->
+              Task Error (Bool, Snapshot)
+type Action = Abort | Remove | Set Value
+```
               
 Example:
 
-    port trans : Task Error -> Task Error () 
-    port trans =
-      transaction
-        ( \maybeVal -> case maybeVal of
-            Just value ->
-              case Json.Decode.decodeValue Json.Decode.int value of
-                Ok counter -> Set (Json.Encode.int (counter + 1)
-                _          -> Abort
-            Nothing ->
-              Set (Json.Encode.int (1)
-        ) location False
-      `andThen`
-      (\(committed, snapshot) -> ... )
+```elm
+port trans : Task Error -> Task Error () 
+port trans =
+  transaction
+    ( \maybeVal -> case maybeVal of
+        Just value ->
+          case Json.Decode.decodeValue Json.Decode.int value of
+            Ok counter -> Set (Json.Encode.int (counter + 1)
+            _          -> Abort
+        Nothing ->
+          Set (Json.Encode.int (1)
+    ) location False
+  `andThen`
+  (\(committed, snapshot) -> ... )
+```
 
 ## Querying
 
-    once        : Query -> Location -> Task Error Snapshot       
-    subscribe   : (Snapshot -> Task x a) ->
-                  (Cancellation -> Task y b) ->
-                  Query ->
-                  Location ->
-                  Task Error QueryId
-    unsubscribe : QueryId -> Task Error ()
+```elm
+once        : Query -> Location -> Task Error Snapshot       
+subscribe   : (Snapshot -> Task x a) ->
+              (Cancellation -> Task y b) ->
+              Query ->
+              Location ->
+              Task Error QueryId
+unsubscribe : QueryId -> Task Error ()
+```
     
 Use `once` to listen to exactly one event of the given type.
 The first parameter specifies the event to listen to: `valueChanged`, `childAdded`, `childChanged`, `childRemoved` or `childMoved`.
@@ -134,17 +150,19 @@ The third and fourth parameter of `subscribe` are the same as the first two of `
 
 On success the `subscribe` task returns a QueryId, which can be used to match the corresponding responses and to cancel the query.
 
-    type alias Snapshot =
-      { queryId: QueryId
-      , key: String
-      , reference: Reference
-      , value: Maybe Value
-      , prevKey: Maybe String
-      , priority: Priority
-      }
-    type Cancellation
-      = Unsubscribed QueryId
-      | QueryError QueryId Error
+```elm
+type alias Snapshot =
+  { queryId: QueryId
+  , key: String
+  , reference: Reference
+  , value: Maybe Value
+  , prevKey: Maybe String
+  , priority: Priority
+  }
+type Cancellation
+  = Unsubscribed QueryId
+  | QueryError QueryId Error
+```
 
 A `Snapshot` carries the corresponding `QueryId` and `Just Value` for the Json value or `Nothing` if the location doesn't exist.
 
@@ -154,23 +172,25 @@ Keys are relevant notably for child queries.
 
 Example:
 
-    responses : Signal.Mailbox (Maybe Snapshot)
-    responses = Signal.mailbox Nothing
-    
-    port query : Task Error QueryId
-    port query =
-      subscribe
-        (Signal.send responses.address << Just)
-        (always (Task.succeed ()))
-        (child added)
-        (fromUrl "https:...firebaseio.com/...")
-    
-    ... = Signal.map
-            (\response -> case response of
-                Nothing -> ...
-                Just snapshot -> ...
-            )
-            responses.signal
+```elm
+responses : Signal.Mailbox (Maybe Snapshot)
+responses = Signal.mailbox Nothing
+
+port query : Task Error QueryId
+port query =
+  subscribe
+    (Signal.send responses.address << Just)
+    (always (Task.succeed ()))
+    (child added)
+    (fromUrl "https:...firebaseio.com/...")
+
+... = Signal.map
+        (\response -> case response of
+            Nothing -> ...
+            Just snapshot -> ...
+        )
+        responses.signal
+```
             
 ## Ordering, Filtering and Limiting Queries
 
@@ -180,28 +200,34 @@ and limited to the first or last certain number of children.
             
 Example queries to be used in once and subscribe:
             
-    childAdded |> limitToFirst 2
-    childAdded |> orderByValue
-    childAdded |> orderByChild "size"
-    childAdded |> orderByKey
-    childAdded |> orderByPriority
-    childAdded |> orderByValue |> startAtValue "foo"
-    childAdded |> orderByValue |> startAtValue "foo" | limitToLast 10
-    childAdded |> orderByChild "size" |> startAtValue 42 |> endAtValue 42
-    childAdded |> orderByKey |> endAtKey "d"
-    childAdded |> orderByPriority |> startAtPriority (NumberPriority 17) (Just "d")
+```elm
+childAdded |> limitToFirst 2
+childAdded |> orderByValue
+childAdded |> orderByChild "size"
+childAdded |> orderByKey
+childAdded |> orderByPriority
+childAdded |> orderByValue |> startAtValue "foo"
+childAdded |> orderByValue |> startAtValue "foo" | limitToLast 10
+childAdded |> orderByChild "size" |> startAtValue 42 |> endAtValue 42
+childAdded |> orderByKey |> endAtKey "d"
+childAdded |> orderByPriority |> startAtPriority (NumberPriority 17) (Just "d")
+```
     
 ## Example.elm
 
 There is a very basic example app in `example/src/Example.elm`. To build it:
 
-    cd example
-    make all open
+```sh
+cd example
+make all open
+```
     
 Alternatively without using `make`:
 
-    cd example
-    elm make --output Example.html src/Example.elm
+```sh
+cd example
+elm make --output Example.html src/Example.elm
+```
 
 Prior to building you may want to put your own Firebase URL in it.
 
