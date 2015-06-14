@@ -1,5 +1,7 @@
+/* @flow */
 Elm.Native.ElmFire = {};
 Elm.Native.ElmFire.make = function(localRuntime) {
+	"use strict";
 
 	localRuntime.Native = localRuntime.Native || {};
 	localRuntime.Native.ElmFire = localRuntime.Native.ElmFire || {};
@@ -12,7 +14,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 	var Task = Elm.Native.Task.make (localRuntime);
 	var List = Elm.Native.List.make (localRuntime);
 
-	var pleaseReportThis = ' Should not happen, please report this as a bug in ElmFire!'
+	var pleaseReportThis = ' Should not happen, please report this as a bug in ElmFire!';
 
 	function asMaybe (value) {
 		if (typeof value == 'undefined' || value === null) {
@@ -26,18 +28,16 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		return maybe.ctor === 'Nothing' ? null : maybe._0;
 	}
 
-	function encodePriority (elmPriority) {
+	function priority2fb (elmPriority) {
 		return elmPriority.ctor === 'NoPriority' ? null : elmPriority._0;
 	}
 
-	function decodePriority (fbPriority) {
-		switch (toString.call (fbPriority)) {
+	function priority2elm (fbPriority) {
+		switch (Object.prototype.toString.call (fbPriority)) {
 			case '[object Number]':
 				return {ctor: 'NumberPriority', _0: fbPriority};
-				break;
 			case '[object String]':
 				return {ctor: 'StringPriority', _0: fbPriority};
-				break;
 			default:
 				return {ctor: 'NoPriority'};
 		}
@@ -65,14 +65,13 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		return ref;
 	}
 
-	function getRef (location, callback) {
+	function getRef (location, failureCallback) {
 		var ref;
 		try {
 			ref = getRefUnsafe (location);
 		}
 		catch (exception) {
-			callback (Task.fail ({ ctor: 'LocationError', _0: exception.toString () }));
-			return null;
+			failureCallback (Task.fail (error2elm ('LocationError', exception.toString ())));
 		}
 		return ref;
 	}
@@ -89,25 +88,41 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		return key;
 	}
 
-	fbErrorMap = {
+	function error2elm (tag, description) {
+		return {
+			_: {},
+			tag: { ctor: tag },
+			description: description
+		};
+	}
+
+	var fbErrorMap = {
 		PERMISSION_DENIED: 'PermissionError',
 		UNAVAILABLE: 'UnavailableError',
 		TOO_BIG: 'TooBigError'
 	};
 
 	function fbTaskError (fbError) {
-		var ctor = fbErrorMap [fbError.code];
-		if (! ctor) {
-			ctor = 'FirebaseError';
+		var tag = fbErrorMap [fbError.code];
+		if (! tag) {
+			tag = 'OtherFirebaseError';
 		}
-		return { ctor: ctor, _0: fbError.toString () };
+		return error2elm (tag, fbError.toString ());
 	}
 
 	function fbTaskFail (fbError) {
 		return Task.fail (fbTaskError (fbError));
 	}
 
-	function onCompleteFn (callback, ref) {
+	function exTaskError (exception) {
+		return error2elm ('OtherFirebaseError', exception.toString ());
+	}
+
+	function exTaskFail (exception) {
+		return Task.fail (exTaskError (exception));
+	}
+
+	function onCompleteCallbackRef (callback, ref) {
 		return function (err) {
 			if (err) {
 				callback (fbTaskFail (err));
@@ -115,10 +130,6 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 				callback (Task.succeed (ref));
 			}
 		};
-	}
-
-	function exTaskFail (exception) {
-		return Task.fail ({ctor: 'FirebaseError', _0: exception.toString ()});
 	}
 
 	function open (location) {
@@ -134,7 +145,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		return Task .asyncFunction (function (callback) {
 			var ref = getRef (location, callback);
 			if (ref) {
-				try { ref.set (value, onCompleteFn (callback, ref)); }
+				try { ref.set (value, onCompleteCallbackRef (callback, ref)); }
 				catch (exception) { callback (exTaskFail (exception)); }
 			}
 		});
@@ -145,7 +156,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 			var ref = getRef (location, callback);
 			if (ref) {
 				try { ref.setWithPriority
-				        (value, encodePriority (priority), onCompleteFn (callback, ref)); }
+				        (value, priority2fb (priority), onCompleteCallbackRef (callback, ref)); }
 				catch (exception) { callback (exTaskFail (exception)); }
 			}
 		});
@@ -156,7 +167,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 			var ref = getRef (location, callback);
 			if (ref) {
 				try { ref.setPriority
-				        (encodePriority (priority), onCompleteFn (callback, ref)); }
+				        (priority2fb (priority), onCompleteCallbackRef (callback, ref)); }
 				catch (exception) { callback (exTaskFail (exception)); }
 			}
 		});
@@ -166,7 +177,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		return Task .asyncFunction (function (callback) {
 			var ref = getRef (location, callback);
 			if (ref) {
-				try { ref.update (value, onCompleteFn (callback, ref)); }
+				try { ref.update (value, onCompleteCallbackRef (callback, ref)); }
 				catch (exception) { callback (exTaskFail (exception)); }
 			}
 		});
@@ -176,7 +187,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		return Task .asyncFunction (function (callback) {
 			var ref = getRef (location, callback);
 			if (ref) {
-				try { ref.remove (onCompleteFn (callback, ref)); }
+				try { ref.remove (onCompleteCallbackRef (callback, ref)); }
 				catch (exception) { callback (exTaskFail (exception)); }
 			}
 		});
@@ -191,20 +202,17 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 					switch (action.ctor) {
 						case 'Abort':  return;
 						case 'Remove': return null;
-						case 'Set':    return action._0; break;
+						case 'Set':    return action._0;
+						default: 	throw ('Bad action.' + pleaseReportThis);
 					}
 				};
 				var onComplete = function (err, committed, fbSnapshot) {
 					if (err) {
-						setTimeout (function () {
-							callback (fbTaskFail (err));
-						});
+						callback (fbTaskFail (err));
 					} else {
-						var snapshot = convertSnapshot ('_transaction_', fbSnapshot, null);
+						var snapshot = snapshot2elm ('_transaction_', fbSnapshot, null);
 						var res = Utils.Tuple2 (committed, snapshot);
-						setTimeout (function () {
-							callback (Task.succeed (res));
-						});
+						callback (Task.succeed (res));
 					}
 				};
 				try { ref.transaction (fbUpdateFunc, onComplete, applyLocally); }
@@ -221,7 +229,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 			if (ref) {
 				var fbUpdateFunc = function (prevVal) {
 					var updateTask = createUpdateTask (asMaybe (prevVal));
-					var x = Task. perform (updateTask);
+					Task. perform (updateTask);
 					// TODO: What is the right way to get a task's result?
 					//       Do we have to employ andThen and onError for that?
 					if (updateTask.tag == 'Succeed') {
@@ -229,22 +237,19 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 						switch (action.ctor) {
 							case 'Abort':  return;
 							case 'Remove': return null;
-							case 'Set':    return action._0; break;
+							case 'Set':    return action._0;
+							default: 	throw ('Bad action.' + pleaseReportThis);
 						}
 						// return undefined to abort when updateTask failed
 					}
 				};
 				var onComplete = function (err, committed, fbSnapshot) {
 					if (err) {
-						setTimeout (function () {
-							callback (fbTaskFail (err));
-						});
+						callback (fbTaskFail (err));
 					} else {
-						var snapshot = convertSnapshot ('_transaction_', fbSnapshot, null);
+						var snapshot = snapshot2elm ('_transaction_', fbSnapshot, null);
 						var res = Utils.Tuple2 (committed, snapshot);
-						setTimeout (function () {
-							callback (Task.succeed (res));
-						});
+						callback (Task.succeed (res));
 					}
 				};
 				try { ref.transaction (fbUpdateFunc, onComplete, applyLocally); }
@@ -305,7 +310,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		}
 		var prio, key;
 		if (query.startAtPriority) {
-			prio = encodePriority (query.startAtPriority._0);
+			prio = priority2fb (query.startAtPriority._0);
 			key  = fromMaybe (query.startAtPriority._1);
 			if (key === null) {
 				ref = ref.startAt (prio)
@@ -314,7 +319,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 			}
 		}
 		if (query.endAtPriority) {
-			prio = encodePriority (query.endAtPriority._0);
+			prio = priority2fb (query.endAtPriority._0);
 			key  = fromMaybe (query.endAtPriority._1);
 			if (key === null) {
 				ref = ref.endAt (prio)
@@ -333,7 +338,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 		return ref;
 	}
 
-	function convertSnapshot (queryId, fbSnapshot, prevKey) {
+	function snapshot2elm (queryId, fbSnapshot, prevKey) {
 		var key = fbSnapshot .key ();
 		if (key === null) {
 			key = '';
@@ -345,7 +350,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 			reference: fbSnapshot .ref (),
 			value: asMaybe (fbSnapshot .val ()),
 			prevKey: asMaybe (prevKey),
-			priority: decodePriority (fbSnapshot .getPriority ()),
+			priority: priority2elm (fbSnapshot .getPriority ()),
 			intern_: fbSnapshot
 		};
 	}
@@ -356,10 +361,8 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 			if (ref) {
 				var queryId = nextQueryId ();
 				var onResponse = function (fbSnapshot, prevKey) {
-					var snapshot = convertSnapshot (queryId, fbSnapshot, prevKey);
-					setTimeout (function () {
-						Task .perform (createResponseTask (snapshot));
-					});
+					var snapshot = snapshot2elm (queryId, fbSnapshot, prevKey);
+					Task .perform (createResponseTask (snapshot));
 				};
 				var onCancel = function (err) {
 					var cancellation = {
@@ -367,9 +370,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 						_0: queryId,
 						_1: fbTaskError (err)
 					};
-					setTimeout (function () {
-						Task .perform (createCancellationTask (cancellation));
-					});
+					Task .perform (createCancellationTask (cancellation));
 				};
 				var eventType = queryEventType (query);
 				queries [queryId] = {
@@ -399,11 +400,9 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 					callback (exTaskFail (exception));
 					return;
 				}
-				setTimeout (function () {
-					Task.perform (query.createCancellationTask ({
-						ctor: 'Unsubscribed', _0: queryId
-					}));
-				});
+				Task.perform (query.createCancellationTask ({
+					ctor: 'Unsubscribed', _0: queryId
+				}));
 				callback (Task.succeed (Utils.Tuple0));
 			} else {
 				callback (Task.fail ({ ctor: 'UnknownQueryId' }));
@@ -416,16 +415,12 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 			var ref = getRef (location, callback);
 			if (ref) {
 				var onResponse = function (fbSnapshot, prevKey) {
-					var snapshot = convertSnapshot ('_once_', fbSnapshot, prevKey);
-					setTimeout (function () {
-						callback (Task.succeed (snapshot));
-					});
+					var snapshot = snapshot2elm ('_once_', fbSnapshot, prevKey);
+					callback (Task.succeed (snapshot));
 				};
 				var onCancel = function (err) {
 					var error = fbTaskFail (err);
-					setTimeout (function () {
-						callback (error);
-					});
+					callback (error);
 				};
 				var eventType = queryEventType (query);
 				try { queryOrderAndFilter (query, ref)
@@ -440,7 +435,7 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 	function toSnapshotList (snapshot) {
 		var arr = [], prevKey = '';
 		snapshot .intern_ .forEach (function (fbChildSnapshot) {
-			var childSnapshot = convertSnapshot ('_child_', fbChildSnapshot, null);
+			var childSnapshot = snapshot2elm ('_child_', fbChildSnapshot, null);
 			childSnapshot .prevKey = prevKey;
 			prevKey = childSnapshot .key;
 			arr .push (childSnapshot);
@@ -475,22 +470,27 @@ Elm.Native.ElmFire.make = function(localRuntime) {
 	}
 
 	return localRuntime.Native.ElmFire.values =
-	{	toUrl: toUrl
-  , key: key
-	, open: open
-	,	set: F2 (set)
-	,	setWithPriority: F3 (setWithPriority)
-	,	setPriority: F2 (setPriority)
-	,	update: F2 (update)
-	,	remove: remove
-	,	transaction: F3 (transaction)
-	,	transactionByTask: F3 (transactionByTask)
-	,	subscribe: F4 (subscribe)
-	,	unsubscribe: unsubscribe
-	,	once: F2 (once)
-	, toSnapshotList: toSnapshotList
-	,	toValueList: toValueList
-	,	toKeyList: toKeyList
-	,	toPairList: toPairList
+	{		toUrl: toUrl
+		, key: key
+		, open: open
+		,	set: F2 (set)
+		,	setWithPriority: F3 (setWithPriority)
+		,	setPriority: F2 (setPriority)
+		,	update: F2 (update)
+		,	remove: remove
+		,	transaction: F3 (transaction)
+		,	transactionByTask: F3 (transactionByTask)
+		,	subscribe: F4 (subscribe)
+		,	unsubscribe: unsubscribe
+		,	once: F2 (once)
+		, toSnapshotList: toSnapshotList
+		,	toValueList: toValueList
+		,	toKeyList: toKeyList
+		,	toPairList: toPairList
+
+		// Utilities for sub-modules
+		, asMaybe: asMaybe
+		, getRef: getRef
+		, pleaseReportThis: pleaseReportThis
 	};
 };

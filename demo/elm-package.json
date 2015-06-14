@@ -1,17 +1,17 @@
 {
-    "version": "1.0.0",
-    "summary": "ElmFire demo app",
-    "repository": "http://github.com/thomasweiser/elmfire.git",
-    "license": "BSD3",
-    "source-directories": [
-        "src",
-        "../src"
-    ],
-    "exposed-modules": [],
-    "native-modules": true,
-    "dependencies": {
-        "elm-lang/core": "2.0.0 <= v < 3.0.0",
-        "evancz/elm-html": "3.0.0 <= v < 4.0.0"
-    },
-    "elm-version": "0.15.0 <= v < 0.16.0"
+  "version": "1.0.0",
+  "summary": "ElmFire demo app",
+  "repository": "http://github.com/thomasweiser/elmfire.git",
+  "license": "BSD3",
+  "source-directories": [
+    "src",
+    "../src"
+  ],
+  "exposed-modules": [],
+  "native-modules": true,
+  "dependencies": {
+    "elm-lang/core": "2.0.0 <= v < 3.0.0",
+    "evancz/elm-html": "3.0.0 <= v < 4.0.0"
+  },
+  "elm-version": "0.15.0 <= v < 0.16.0"
 }

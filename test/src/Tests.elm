@@ -10,7 +10,7 @@ import List
 import Time
 import Task exposing (Task)
 import Json.Encode as JE
-import Json.Decode as JD
+import Json.Decode as JD exposing ((:=))
 import Html exposing (Html, div, span, text, a, h1, h2)
 import Html.Attributes exposing (href, target, class)
 import Debug
@@ -18,6 +18,7 @@ import Debug
 import TaskTest exposing (..)
 
 import ElmFire exposing (..)
+import ElmFire.Auth as Auth
 
 -------------------------------------------------------------------------------
 
@@ -27,17 +28,21 @@ url = "https://elmfiretest.firebaseio.com/"
 
 -------------------------------------------------------------------------------
 
+isNothing : Maybe a -> Bool
+isNothing x = case x of
+  Just _  -> False
+  Nothing -> True
+
+isJust : Maybe a -> Bool
+isJust = not << isNothing
+
 isLocationError : Error -> Bool
 isLocationError err =
-  case err of
-    LocationError _ -> True
-    _ -> False
+  err.tag == LocationError
 
 isPermissionError : Error -> Bool
 isPermissionError err =
-  case err of
-    PermissionError _ -> True
-    _ -> False
+  err.tag == PermissionError
 
 action1 : Maybe JE.Value -> Action
 action1 maybeValue =
@@ -60,6 +65,9 @@ type Response
 dino = fromUrl url |> sub "dinosaur-facts"
 
 test1 =
+
+  -- Start tests by creating a new path in the Firebase for this test run -----
+
   sequence  "Test Sequence" (
       test  "open" (open (fromUrl url |> sub "test" |> push |> push))
   |>> succeeds
@@ -71,6 +79,86 @@ test1 =
   |>> map location
   |>+ \loc
    -> clear
+
+  -- User management tests ----------------------------------------------------
+
+  |>- test  "generate a test email address from the resulting key string"
+            (Task.succeed <| (key ref) ++ "@b.com")
+  |>+ \email
+   -> test  "create user" (Auth.userOperation loc (Auth.CreateUser email "pw1"))
+  |>> printResult
+  |>> meets "returns a uid" isJust
+
+  |>- test  "change password with wrong old password" (Auth.userOperation loc (Auth.ChangePassword email "wrong" "pw2"))
+  |>> errorMeets "reports AuthError InvalidPassword"
+      (\err -> err.tag == AuthError InvalidPassword)
+
+  |>- test  "change password" (Auth.userOperation loc (Auth.ChangePassword email "pw1" "pw2"))
+  |>> printResult
+  |>> succeeds
+
+  |>- test  "change email" (Auth.userOperation loc (Auth.ChangeEmail email "pw2" ("2" ++ email)))
+  |>> succeeds
+
+  {- Don't run this test by default (Firebase sends an nonaddressable email each time)
+  |>- test  "reset password" (Auth.userOperation loc (Auth.ResetPassword ("2" ++ email)))
+  |>> succeeds
+  -}
+
+  |>- test  "remove nonexistent user" (Auth.userOperation loc (Auth.RemoveUser (email) "pw2"))
+  |>> errorMeets "reports AuthError InvalidUser"
+      (\err -> err.tag == AuthError InvalidUser)
+
+  |>- test  "remove user" (Auth.userOperation loc (Auth.RemoveUser ("2" ++ email) "pw2"))
+  |>> succeeds
+
+
+  -- Authentication tests -----------------------------------------------------
+
+  |>- createReporter "authSubscription results"
+  |>+ \reporterAuth
+   -> test  "subscribe to authentication changes"
+            ( Auth.subscribeAuth
+                reporterAuth
+                loc
+            )
+  |>> succeeds
+
+  |>- test  "unauthenticate" (Auth.unauthenticate loc)
+  |>> printResult
+  |>> succeeds
+
+  |>- test  "getAuth while not authenticated" (Auth.getAuth loc)
+  |>> printResult
+  |>> meets "getAuth returns Nothing" ((==) Nothing)
+
+  |>- test  "getAuth with invalid location" (Auth.getAuth (loc |> root |> parent))
+  |>> errorMeets "reports LocationError" isLocationError
+
+  |>- test  "auth anonymously"
+            (Auth.authenticate loc [Auth.rememberNone] Auth.Anonymous)
+  |>> printResult
+
+  |>- test  "getAuth after authentication" (Auth.getAuth loc)
+  |>> printResult
+  |>> meets "getAuth returns an anonymous provider"
+            (\maybeAuth -> case maybeAuth of
+              Just auth -> auth.provider == "anonymous"
+              _ -> False
+            )
+
+  |>- test  "re-auth with wrong password" (Auth.unauthenticate loc `Task.andThen` \_ ->
+            Auth.authenticate loc [Auth.rememberNone] (Auth.Password "a@b.com" "bad"))
+  |>> errorMeets "reports AuthError InvalidPassword"
+      (\err -> err.tag == AuthError InvalidPassword)
+
+  |>- test  "re-auth with right password" (Auth.unauthenticate loc `Task.andThen` \_ ->
+            Auth.authenticate loc [Auth.rememberNone] (Auth.Password "a@b.com" "good"))
+  |>> printResult
+  |>> meets "provider-specifics contain the given email address"
+            (\auth -> JD.decodeValue ("email" := JD.string) auth.specifics == Ok "a@b.com")
+
+  -- Test reading and writing (except complex queries) ------------------------
 
   |>- test  "once valueChanged (at child)" (once valueChanged loc)
   |>> printResult
@@ -148,13 +236,11 @@ test1 =
 
   |>- test  "open root's parent" ( open (fromUrl url |> root |> parent) )
   |>> printResult
-  |>> fails
   |>> errorMeets "reports LocationError" isLocationError
   |>- clear
 
   |>- test  "open an invalid URL" ( open (fromUrl "not-a-url") )
   |>> printResult
-  |>> fails
   |>> errorMeets "reports LocationError" isLocationError
   |>- clear
 
@@ -166,7 +252,6 @@ test1 =
   |>> printResult
   |>> fails
   |>> errorMeets "reports LocationError" isLocationError
-  |>- clear
 
   |>- test  "transaction with invalid URL"
             (transaction action1 (fromUrl "not-a-url") True)
@@ -175,7 +260,9 @@ test1 =
   |>> errorMeets "reports LocationError" isLocationError
   |>- clear
 
-  |>- test  "dino" (once valueChanged dino)
+  -- Test complex queries, using the dino example data from Firebase docs -----
+
+  |>- test  "dino test data" (once valueChanged dino)
   |>> map (.value >> Maybe.withDefault (JE.null) >> JE.encode 2)
   |>> printString
 

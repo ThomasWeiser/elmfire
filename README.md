@@ -213,6 +213,34 @@ childAdded |> orderByKey |> endAtKey "d"
 childAdded |> orderByPriority |> startAtPriority (NumberPriority 17) (Just "d")
 ```
     
+## Authentication
+
+The sub-module ElmFire.Auth provides all authentication and user management functions
+that are offered by Firebase.
+
+Some example tasks:
+
+```elm
+import ElmFire.Auth exposing (..)
+
+-- create a new user-account with email and password
+userOperation (CreateUser "me@some.where" "myPassword")
+
+-- login with with email and password
+authenticate loc [rememberSessionOnly] (Password "me@some.where" "myPassword")
+
+-- login with with github account
+authenticate loc [] (OAuthPopup "github")
+
+-- watch for logins and logouts
+subscribeAuth
+  (\maybeAuth -> case maybeAuth of
+    Just auth -> ... auth.uid ...
+    Nothing   -> ... -- not authenticated
+  )
+  loc
+```
+
 ## Example.elm
 
 There is a very basic example app in `example/src/Example.elm`. To build it:
@@ -246,9 +274,10 @@ An older, still functional testing app lives in the directory `demo`.
 
 There are a lot of features I plan to add in the near future:
 
-* Authentication
-* Synchronization of Dicts, Lists, Arrays
+* Complete the API, some special features are still missing
+* Synchronization of Dicts, Lists, Arrays. Maybe more convenience functions.
 * Better test app
 * A nice example app
 
-Also please take notice that the API is not stabilized yet. The exact interface may change a bit here and there.
+Please take notice that the API is not finalized yet.
+The exact interface may change a bit here and there.

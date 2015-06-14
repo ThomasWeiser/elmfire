@@ -218,7 +218,7 @@ infixl 1 |>>
 (|>>) = (|>)
 
 infixl 0 |>-
-(|>-) : TestTask x a -> TestTask x b -> TestTask x b
+(|>-) : TestTask x a -> TestTask y b -> TestTask y b
 (|>-) testTask1 task2 =
   \context ->
     Task.toMaybe (testTask1 (context ++ "-1"))

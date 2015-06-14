@@ -7,7 +7,7 @@ module ElmFire
   , Snapshot
   , Action (..)
   , Cancellation (..)
-  , Error (..)
+  , Error, ErrorType (..), AuthErrorType (..)
   , fromUrl, sub, parent, root, push, location, toUrl, key
   , open, set, setWithPriority, setPriority, update, remove
   , subscribe, unsubscribe, once, transaction, transactionByTask
@@ -57,17 +57,44 @@ import Native.Firebase
 import Native.ElmFire
 import Array
 import Json.Encode as JE
-import Signal exposing (Address)
 import Task exposing (Task)
 
-{-| Errors reported from Firebase -}
-type Error
-  = LocationError String
-  | PermissionError String
-  | UnavailableError String
-  | TooBigError String
-  | FirebaseError String
+{-| Errors reported from Firebase or ElmFire -}
+type alias Error =
+  { tag: ErrorType
+  , description: String
+  }
+
+{-| Type of errors reported from Firebase or ElmFire -}
+type ErrorType
+  = LocationError
+  | PermissionError
+  | UnavailableError
+  | TooBigError
+  | OtherFirebaseError
+  | AuthError AuthErrorType
   | UnknownQueryId
+
+{-| Errors reported from Authentication Module -}
+type AuthErrorType
+  = AuthenticationDisabled
+  | EmailTaken
+  | InvalidArguments
+  | InvalidConfiguration
+  | InvalidCredentials
+  | InvalidEmail
+  | InvalidOrigin
+  | InvalidPassword
+  | InvalidProvider
+  | InvalidToken
+  | InvalidUser
+  | NetworkError
+  | ProviderError
+  | TransportUnavailable
+  | UnknownError
+  | UserCancelled
+  | UserDenied
+  | OtherAuthenticationError
 
 {-| A Firebase location, which is an opaque type
 that represents a literal path into a firebase.
@@ -104,7 +131,7 @@ type Priority
   | NumberPriority Float
   | StringPriority String
 
-{-| Unique opaque identifier for each executed query -}
+{-| Unique opaque identifier for each executed query subscription -}
 type QueryId = QueryId
 
 {-| Message about cancelled query -}
