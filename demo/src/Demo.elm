@@ -22,7 +22,7 @@ import ElmFire exposing
   , subscribe, unsubscribe, once
   , valueChanged, childAdded, childChanged, childRemoved, childMoved
   , Location, Reference, Priority (..), Cancellation (..)
-  , Snapshot, QueryId, Error (..), Query
+  , Snapshot, QueryId, Error, Query
   )
 
 -------------------------------------------------------------------------------
