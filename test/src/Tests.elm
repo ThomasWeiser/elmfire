@@ -66,52 +66,78 @@ dino = fromUrl url |> sub "dinosaur-facts"
 
 test1 =
 
-  -- Start tests by creating a new path in the Firebase for this test run -----
+  -- Start tests by opening a path and creating a reference for it ------------
 
   sequence  "Test Sequence" (
+
       test  "open" (open (fromUrl url |> sub "test" |> push |> push))
   |>> succeeds
   |>> meets "url of opened ref starts with base-url" (\ref -> url `String.startsWith` toUrl ref )
 
   |>+ \ref
-   -> test  "setWithPriority" (setWithPriority (JE.string "Hello") (NumberPriority 42) (location ref))
+
+  -- Connection state tests ---------------------------------------------------
+
+   -> createReporter "Metadata results"
+  |>+ \reporterConnected
+   -> test  "subscribe to connection state changes"
+            ( subscribeConnected
+                ((\state -> "connected: " ++ toString state) >> reporterConnected)
+                (location ref)
+            )
+  |>> succeeds
+  |>- test  "subscribe to serverTimeOffset changes"
+            ( subscribeServerTimeOffset
+                ((\offset -> "serverTimeOffset: " ++ toString offset) >> reporterConnected)
+                (location ref)
+            )
+  |>> succeeds
+
+  -- Create a new path in the Firebase for this test run ----------------------
+
+
+  |>- test  "setWithPriority" (setWithPriority (JE.string "Hello") (NumberPriority 42) (location ref))
   |>> meets "set returned same ref" (\refReturned -> toUrl refReturned == toUrl ref)
   |>> map location
   |>+ \loc
    -> clear
+  |>- test  "go offline" goOffline
+  |>> succeeds
+  |>- test  "go online" goOnline
+  |>> succeeds
 
   -- User management tests ----------------------------------------------------
 
   |>- test  "generate a test email address from the resulting key string"
             (Task.succeed <| (key ref) ++ "@b.com")
+  |>> printResult
   |>+ \email
-   -> test  "create user" (Auth.userOperation loc (Auth.CreateUser email "pw1"))
+   -> test  "create user" (Auth.userOperation loc (Auth.createUser email "pw1"))
   |>> printResult
   |>> meets "returns a uid" isJust
 
-  |>- test  "change password with wrong old password" (Auth.userOperation loc (Auth.ChangePassword email "wrong" "pw2"))
+  |>- test  "change password with wrong old password" (Auth.userOperation loc (Auth.changePassword email "wrong" "pw2"))
   |>> errorMeets "reports AuthError InvalidPassword"
       (\err -> err.tag == AuthError InvalidPassword)
 
-  |>- test  "change password" (Auth.userOperation loc (Auth.ChangePassword email "pw1" "pw2"))
+  |>- test  "change password" (Auth.userOperation loc (Auth.changePassword email "pw1" "pw2"))
   |>> printResult
   |>> succeeds
 
-  |>- test  "change email" (Auth.userOperation loc (Auth.ChangeEmail email "pw2" ("2" ++ email)))
+  |>- test  "change email" (Auth.userOperation loc (Auth.changeEmail email "pw2" ("2" ++ email)))
   |>> succeeds
 
   {- Don't run this test by default (Firebase sends an nonaddressable email each time)
-  |>- test  "reset password" (Auth.userOperation loc (Auth.ResetPassword ("2" ++ email)))
+  |>- test  "reset password" (Auth.userOperation loc (Auth.resetPassword ("2" ++ email)))
   |>> succeeds
   -}
 
-  |>- test  "remove nonexistent user" (Auth.userOperation loc (Auth.RemoveUser (email) "pw2"))
+  |>- test  "remove nonexistent user" (Auth.userOperation loc (Auth.removeUser (email) "pw2"))
   |>> errorMeets "reports AuthError InvalidUser"
       (\err -> err.tag == AuthError InvalidUser)
 
-  |>- test  "remove user" (Auth.userOperation loc (Auth.RemoveUser ("2" ++ email) "pw2"))
+  |>- test  "remove user" (Auth.userOperation loc (Auth.removeUser ("2" ++ email) "pw2"))
   |>> succeeds
-
 
   -- Authentication tests -----------------------------------------------------
 
@@ -130,13 +156,13 @@ test1 =
 
   |>- test  "getAuth while not authenticated" (Auth.getAuth loc)
   |>> printResult
-  |>> meets "getAuth returns Nothing" ((==) Nothing)
+  |>> equals "getAuth returns Nothing" Nothing
 
   |>- test  "getAuth with invalid location" (Auth.getAuth (loc |> root |> parent))
   |>> errorMeets "reports LocationError" isLocationError
 
   |>- test  "auth anonymously"
-            (Auth.authenticate loc [Auth.rememberNone] Auth.Anonymous)
+            (Auth.authenticate loc [Auth.rememberNone] Auth.asAnonymous)
   |>> printResult
 
   |>- test  "getAuth after authentication" (Auth.getAuth loc)
@@ -148,12 +174,12 @@ test1 =
             )
 
   |>- test  "re-auth with wrong password" (Auth.unauthenticate loc `Task.andThen` \_ ->
-            Auth.authenticate loc [Auth.rememberNone] (Auth.Password "a@b.com" "bad"))
+            Auth.authenticate loc [Auth.rememberNone] (Auth.withPassword "a@b.com" "bad"))
   |>> errorMeets "reports AuthError InvalidPassword"
       (\err -> err.tag == AuthError InvalidPassword)
 
   |>- test  "re-auth with right password" (Auth.unauthenticate loc `Task.andThen` \_ ->
-            Auth.authenticate loc [Auth.rememberNone] (Auth.Password "a@b.com" "good"))
+            Auth.authenticate loc [Auth.rememberNone] (Auth.withPassword "a@b.com" "good"))
   |>> printResult
   |>> meets "provider-specifics contain the given email address"
             (\auth -> JD.decodeValue ("email" := JD.string) auth.specifics == Ok "a@b.com")
@@ -165,8 +191,12 @@ test1 =
   |>> meets "once returned same key" (\snapshot -> snapshot.key == key ref)
   |>> meets "once returned right value" (\snapshot -> snapshot.value == Just (JE.string "Hello"))
   |>> meets "once returned right prevKey" (\snapshot -> snapshot.prevKey == Nothing)
-  |>> map .priority
-  |>> equals "once returned right priority" (NumberPriority 42)
+  |>> meets "once returned right priority" (\snapshot -> snapshot.priority == NumberPriority 42)
+  |>> map exportValue
+  |>> meets "export contains right value"
+            (\ex -> JD.decodeValue (".value" := JD.string) ex == Ok "Hello")
+  |>> meets "export contains right priority"
+            (\ex -> JD.decodeValue (".priority" := JD.int) ex == Ok 42)
 
   |>- createReporter "subscription results"
   |>+ \reporter1
@@ -181,6 +211,7 @@ test1 =
   |>> printResult
 
   |>- test  "sleep 1s" ( Task.sleep (1 * Time.second) )
+  |>- test  "set child with serverTimestamp" ( set serverTimestamp (loc |> parent |> sub "server timestamp") )
   |>- test  "set another child" ( set (JE.string "Elmers") (loc |> parent |> push) )
   |>> map key
   |>> printResult
@@ -354,6 +385,7 @@ test1 =
   |>> map (toKeyList >> String.join " ")
   |>> printString
 
+  |>- test  "end of test sequence" (Task.succeed ())
   |>- clear
   )
 

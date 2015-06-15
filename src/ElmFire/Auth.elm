@@ -1,10 +1,14 @@
 module ElmFire.Auth
   ( Authentication
-  , Identification (..)
-  , Options, rememberDefault, rememberSessionOnly, rememberNone
-  , UserOperation (..)
   , getAuth, subscribeAuth, unsubscribeAuth
+  , Identification
   , authenticate, unauthenticate
+  , asAnonymous, withPassword, withOAuthPopup, withOAuthRedirect
+  , withOAuthAccessToken, withOAuthCredentials, withCustomToken
+  , Options
+  , rememberDefault, rememberSessionOnly, rememberNone
+  , UserOperation
+  , createUser, removeUser, changeEmail, changePassword, resetPassword
   , userOperation
   ) where
 
@@ -18,10 +22,15 @@ Therefore, only the root of the `Location` parameter is relevant.
 
 # Perform Authentication
 @docs Identification, authenticate, unauthenticate,
-Options, rememberDefault, rememberSessionOnly, rememberNone
+asAnonymous, withPassword, withOAuthPopup, withOAuthRedirect,
+withOAuthAccessToken, withOAuthCredentials, withCustomToken
+
+# Options
+@docs Options, rememberDefault, rememberSessionOnly, rememberNone
 
 # User Management
-@docs UserOperation, userOperation
+@docs UserOperation, userOperation,
+createUser, removeUser, changeEmail, changePassword, resetPassword
 -}
 
 import Native.Firebase
@@ -63,6 +72,27 @@ type Identification
   | OAuthAccessToken String String
   | OAuthCredentials String (List (String, String))
   | CustomToken String
+
+asAnonymous : Identification
+asAnonymous = Anonymous
+
+withPassword : String -> String -> Identification
+withPassword = Password
+
+withOAuthPopup : String -> Identification
+withOAuthPopup = OAuthPopup
+
+withOAuthRedirect : String -> Identification
+withOAuthRedirect = OAuthRedirect
+
+withOAuthAccessToken : String -> String -> Identification
+withOAuthAccessToken = OAuthAccessToken
+
+withOAuthCredentials : String -> List (String, String) -> Identification
+withOAuthCredentials = OAuthCredentials
+
+withCustomToken : String -> Identification
+withCustomToken = CustomToken
 
 {-| Optional authentication parameter
 
@@ -108,10 +138,35 @@ type UserOperation
   | ChangePassword String String String -- email password newPassword
   | ResetPassword String                -- email
 
+{-| UserOperation: Create a user identity.
+Parameter: email password -}
+createUser : String -> String -> UserOperation
+createUser = CreateUser
+
+{-| UserOperation: Remove a user identity.
+Parameter: email password -}
+removeUser : String -> String -> UserOperation
+removeUser = RemoveUser
+
+{-| UserOperation: Change the email address of a user identity.
+Parameter: oldEmail password newEmail -}
+changeEmail : String -> String -> String -> UserOperation
+changeEmail = ChangeEmail
+
+{-| UserOperation: Change the password of a user identity.
+Parameter: email oldPassword newPassword -}
+changePassword : String -> String -> String -> UserOperation
+changePassword = ChangePassword
+
+{-| UserOperation: Initiate a password reset. Firebase will send an appropriate email to the account owner.
+Parameter: email -}
+resetPassword : String -> UserOperation
+resetPassword = ResetPassword
+
 {-| Perform a user management operation at a Firebase
 
-Only `CreateUser` returns a `Just uid` on success,
-all other operations return `Nothing`.
+Operation `createUser` returns a `Just uid` on success,
+all other operations return `Nothing` on success.
 -}
 userOperation : Location
              -> UserOperation

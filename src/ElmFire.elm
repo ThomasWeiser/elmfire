@@ -1,37 +1,53 @@
 module ElmFire
-  ( Location
+  ( Error, ErrorType (..), AuthErrorType (..)
+  , Location
+  , fromUrl, sub, parent, root, push
   , Reference
+  , open, key, toUrl, location
   , Priority (..)
-  , Query
-  , QueryId
+  , set, setWithPriority, setPriority, update, remove
   , Snapshot
   , Action (..)
+  , transaction, transactionByTask
+  , Query
+  , QueryId
   , Cancellation (..)
-  , Error, ErrorType (..), AuthErrorType (..)
-  , fromUrl, sub, parent, root, push, location, toUrl, key
-  , open, set, setWithPriority, setPriority, update, remove
-  , subscribe, unsubscribe, once, transaction, transactionByTask
+  , subscribe, subscribeConditional, unsubscribe, once
   , valueChanged, childAdded, childChanged, childRemoved, childMoved
   , orderByChild, orderByValue, orderByKey, orderByPriority
   , startAtValue, startAtKey, startAtPriority
   , endAtValue, endAtKey, endAtPriority
   , limitToFirst, limitToLast
   , toSnapshotList, toValueList, toKeyList,toPairList
+  , exportValue
+  , goOffline, goOnline
+  , subscribeConnected, subscribeServerTimeOffset
+  , serverTimestamp
   ) where
 
 {-| Elm bindings to Firebase.
 
 # Firebase locations
-@docs Location, fromUrl, sub, parent, root
+@docs Location, fromUrl, sub, parent, root, push
 
 # Firebase references
 @docs Reference, open, key, toUrl, location
 
+# Priorities
+@docs Priority
+
 # Writing
 @docs set, setWithPriority, setPriority,  update, remove
 
+# Snapshots
+@docs Snapshot
+
+# Transactions
+@docs Action, transaction, transactionByTask
+
 # Querying
-@docs Query, QueryId, subscribe, unsubscribe,
+@docs Query, QueryId, Cancellation,
+subscribe, unsubscribe, once,
 valueChanged, childAdded, childChanged, childRemoved, childMoved
 
 # Ordering
@@ -43,20 +59,21 @@ valueChanged, childAdded, childChanged, childRemoved, childMoved
 # Limiting
 @docs limitToFirst, limitToLast
 
-# Query results
-@docs Snapshot, Cancellation, toSnapshotList, toValueList, toKeyList,toPairList
+# Snapshort processing
+@docs toSnapshotList, toValueList, toKeyList, toPairList, export
 
-# Transactions
-@docs Action, transaction, transactionByTask
+# Connection State and Offline Capabilities
+@doc goOffline, goOnline, subscribeConnected, subscribeServerTimeOffset
 
 # Error reporting
-@docs Error
+@docs Error, ErrorType, AuthErrorType
 -}
 
 import Native.Firebase
 import Native.ElmFire
-import Array
+import Time exposing (Time)
 import Json.Encode as JE
+import Json.Decode as JD
 import Task exposing (Task)
 
 {-| Errors reported from Firebase or ElmFire -}
@@ -158,6 +175,7 @@ type alias Snapshot =
   , intern_: SnapshotFB
   }
 
+{- A Firebase snapshot as an internally used JS object -}
 type SnapshotFB = SnapshotFB
 
 {-| Possible return values for update functions of a transaction -}
@@ -341,7 +359,20 @@ subscribe : (Snapshot -> Task x a)
          -> Query q
          -> Location
          -> Task Error QueryId
-subscribe = Native.ElmFire.subscribe
+subscribe createResponseTask =
+  subscribeConditional (Just << createResponseTask)
+
+{-| Query a Firebase location by subscription with optional reaction
+
+Similar to `subscribe` except that the function given as the first parameter
+can decide whether to run a task or not.
+-}
+subscribeConditional : (Snapshot -> Maybe (Task x a))
+         -> (Cancellation -> Task y b)
+         -> Query q
+         -> Location
+         -> Task Error QueryId
+subscribeConditional = Native.ElmFire.subscribeConditional
 
 {-| Cancel a query subscription -}
 unsubscribe : QueryId -> Task Error ()
@@ -518,3 +549,54 @@ toKeyList = Native.ElmFire.toKeyList
 {-| Convert a snapshot's children into a list of key-value-pairs -}
 toPairList : Snapshot -> List (String, JE.Value)
 toPairList = Native.ElmFire.toPairList
+
+{-| Exports the entire contents of a Snapshot as a JavaScript object.
+
+This is similar to .value except priority information is included (if available),
+making it suitable for backing up your data.
+-}
+exportValue : Snapshot -> JE.Value
+exportValue = Native.ElmFire.exportValue
+
+goOffline : Task x ()
+goOffline = Native.ElmFire.setOffline True
+
+goOnline  : Task x ()
+goOnline = Native.ElmFire.setOffline False
+
+{-| Subscribe to connection state changes -}
+subscribeConnected : (Bool -> Task x a)
+         -> Location
+         -> Task Error QueryId
+subscribeConnected createResponseTask location =
+  subscribeConditional
+    ( \snapshot -> case snapshot.value of
+        Just val ->
+          case JD.decodeValue JD.bool val of
+            Ok state -> Just (createResponseTask state)
+            Err _    -> Nothing
+        Nothing  -> Nothing
+    )
+    (always (Task.succeed ()))
+    valueChanged
+    (location |> root |> sub ".info/connected")
+
+{-| Subscribe to server time offset -}
+subscribeServerTimeOffset : (Time -> Task x a)
+         -> Location
+         -> Task Error QueryId
+subscribeServerTimeOffset createResponseTask location =
+  subscribeConditional
+    ( \snapshot -> case snapshot.value of
+        Just val ->
+          case JD.decodeValue JD.float val of
+            Ok offset -> Just (createResponseTask (offset * Time.millisecond))
+            Err _     -> Nothing
+        Nothing  -> Nothing
+    )
+    (always (Task.succeed ()))
+    valueChanged
+    (location |> root |> sub ".info/serverTimeOffset")
+
+serverTimestamp : JE.Value
+serverTimestamp = Native.ElmFire.serverTimestamp
