@@ -100,11 +100,28 @@ test1 =
   |>> meets "set returned same ref" (\refReturned -> toUrl refReturned == toUrl ref)
   |>> map location
   |>+ \loc
-   -> clear
+   -> test  "once valueChanged (at child)" (once valueChanged loc)
+  |>> printResult
+  |>> meets "once returned same key" (\snapshot -> snapshot.key == key ref)
+
+  |>- test  "onDisconnectSet"
+            (onDisconnectSet (JE.string "disconnected") (loc |> parent |> sub "onlineState"))
+  |>> printResult
+  |>> succeeds
+  |>- test  "onDisconnectSet has not written yet"
+            (once valueChanged (loc |> parent |> sub "onlineState"))
+  |>> meets "value is Nothing"
+            (\snapshot -> snapshot.value == Nothing)
+
   |>- test  "go offline" goOffline
   |>> succeeds
   |>- test  "go online" goOnline
   |>> succeeds
+
+  |>- test  "onDisconnectSet has now written the value"
+            (once valueChanged (loc |> parent |> sub "onlineState"))
+  |>> meets "value is written"
+            (\snapshot -> snapshot.value == Just (JE.string "disconnected"))
 
   -- User management tests ----------------------------------------------------
 
@@ -211,7 +228,7 @@ test1 =
   |>> printResult
 
   |>- test  "sleep 1s" ( Task.sleep (1 * Time.second) )
-  |>- test  "set child with serverTimestamp" ( set serverTimestamp (loc |> parent |> sub "server timestamp") )
+  |>- test  "set child with serverTimeStamp" ( set serverTimeStamp (loc |> parent |> sub "server timestamp") )
   |>- test  "set another child" ( set (JE.string "Elmers") (loc |> parent |> push) )
   |>> map key
   |>> printResult

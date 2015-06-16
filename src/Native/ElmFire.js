@@ -78,12 +78,12 @@ Elm.Native.ElmFire.make = function (localRuntime) {
     return Task.fail (exTaskError (exception));
   }
 
-  function onCompleteCallbackRef (callback, ref) {
+  function onCompleteCallbackRef (callback, res) {
     return function (err) {
       if (err) {
         callback (fbTaskFail (err));
       } else {
-        callback (Task.succeed (ref));
+        callback (Task.succeed (res));
       }
     };
   }
@@ -142,22 +142,35 @@ Elm.Native.ElmFire.make = function (localRuntime) {
     });
   }
 
-  function set (value, location) {
+  function set (onDisconnect, value, location) {
     return Task .asyncFunction (function (callback) {
       var ref = getRef (location, callback);
       if (ref) {
-        try { ref.set (value, onCompleteCallbackRef (callback, ref)); }
+				var onComplete;
+				if (onDisconnect) {
+					ref = ref.onDisconnect ();
+					onComplete = onCompleteCallbackRef (callback, Utils.Tuple0);
+				} else {
+					onComplete = onCompleteCallbackRef (callback, ref)
+				}
+        try { ref.set (value, onComplete); }
         catch (exception) { callback (exTaskFail (exception)); }
       }
     });
   }
 
-  function setWithPriority (value, priority, location) {
+  function setWithPriority (onDisconnect, value, priority, location) {
     return Task .asyncFunction (function (callback) {
       var ref = getRef (location, callback);
       if (ref) {
-        try { ref.setWithPriority
-                (value, priority2fb (priority), onCompleteCallbackRef (callback, ref)); }
+				var onComplete;
+				if (onDisconnect) {
+					ref = ref.onDisconnect ();
+					onComplete = onCompleteCallbackRef (callback, Utils.Tuple0);
+				} else {
+					onComplete = onCompleteCallbackRef (callback, ref)
+				}
+        try { ref.setWithPriority (value, priority2fb (priority), onComplete); }
         catch (exception) { callback (exTaskFail (exception)); }
       }
     });
@@ -167,32 +180,58 @@ Elm.Native.ElmFire.make = function (localRuntime) {
     return Task .asyncFunction (function (callback) {
       var ref = getRef (location, callback);
       if (ref) {
-        try { ref.setPriority
-                (priority2fb (priority), onCompleteCallbackRef (callback, ref)); }
+        try {
+					ref.setPriority
+                (priority2fb (priority), onCompleteCallbackRef (callback, ref));
+				}
         catch (exception) { callback (exTaskFail (exception)); }
       }
     });
   }
 
-  function update (value, location) {
+  function update (onDisconnect, value, location) {
     return Task .asyncFunction (function (callback) {
       var ref = getRef (location, callback);
       if (ref) {
-        try { ref.update (value, onCompleteCallbackRef (callback, ref)); }
+				var onComplete;
+				if (onDisconnect) {
+					ref = ref.onDisconnect ();
+					onComplete = onCompleteCallbackRef (callback, Utils.Tuple0);
+				} else {
+					onComplete = onCompleteCallbackRef (callback, ref)
+				}
+        try { ref.update (value, onComplete); }
         catch (exception) { callback (exTaskFail (exception)); }
       }
     });
   }
 
-  function remove (location) {
-    return Task .asyncFunction (function (callback) {
-      var ref = getRef (location, callback);
-      if (ref) {
-        try { ref.remove (onCompleteCallbackRef (callback, ref)); }
-        catch (exception) { callback (exTaskFail (exception)); }
-      }
-    });
-  }
+	function remove (onDisconnect, location) {
+   return Task .asyncFunction (function (callback) {
+     var ref = getRef (location, callback);
+     if (ref) {
+			var onComplete;
+			if (onDisconnect) {
+				ref = ref.onDisconnect ();
+				onComplete = onCompleteCallbackRef (callback, Utils.Tuple0);
+			} else {
+				onComplete = onCompleteCallbackRef (callback, ref)
+			}
+       try { ref.remove (onComplete); }
+       catch (exception) { callback (exTaskFail (exception)); }
+     }
+   });
+ }
+
+	function onDisconnectCancel (location) {
+   return Task .asyncFunction (function (callback) {
+     var ref = getRef (location, callback);
+     if (ref) {
+       try { ref.onDisconnect().cancel (onCompleteCallbackRef (callback, Utils.Tuple0)); }
+       catch (exception) { callback (exTaskFail (exception)); }
+     }
+   });
+ }
 
   function transaction (updateFunc, location, applyLocally) {
     return Task .asyncFunction (function (callback) {
@@ -488,17 +527,18 @@ Elm.Native.ElmFire.make = function (localRuntime) {
     });
   }
 
-  var serverTimestamp = Firebase.ServerValue.TIMESTAMP;
+  var serverTimeStamp = Firebase.ServerValue.TIMESTAMP;
 
   return localRuntime.Native.ElmFire.values =
   {		toUrl: toUrl
     , key: key
     , open: open
-    ,	set: F2 (set)
-    ,	setWithPriority: F3 (setWithPriority)
+    ,	set: F3 (set)
+    ,	setWithPriority: F4 (setWithPriority)
     ,	setPriority: F2 (setPriority)
-    ,	update: F2 (update)
-    ,	remove: remove
+    ,	update: F3 (update)
+    ,	remove: F2 (remove)
+		, onDisconnectCancel: onDisconnectCancel
     ,	transaction: F3 (transaction)
     ,	transactionByTask: F3 (transactionByTask)
     ,	subscribeConditional: F4 (subscribeConditional)
@@ -510,7 +550,7 @@ Elm.Native.ElmFire.make = function (localRuntime) {
     ,	toPairList: toPairList
     , exportValue: exportValue
     , setOffline: setOffline
-    , serverTimestamp: serverTimestamp
+    , serverTimeStamp: serverTimeStamp
 
     // Utilities for sub-modules
     , asMaybe: asMaybe

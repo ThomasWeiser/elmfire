@@ -6,6 +6,8 @@ module ElmFire
   , open, key, toUrl, location
   , Priority (..)
   , set, setWithPriority, setPriority, update, remove
+  , onDisconnectSet, onDisconnectSetWithPriority
+  , onDisconnectUpdate, onDisconnectRemove, onDisconnectCancel
   , Snapshot
   , Action (..)
   , transaction, transactionByTask
@@ -22,7 +24,7 @@ module ElmFire
   , exportValue
   , goOffline, goOnline
   , subscribeConnected, subscribeServerTimeOffset
-  , serverTimestamp
+  , serverTimeStamp
   ) where
 
 {-| Elm bindings to Firebase.
@@ -269,12 +271,12 @@ The task may result in an error if the location is invalid
 or you have no permission to write this data.
 -}
 set : JE.Value -> Location -> Task Error Reference
-set = Native.ElmFire.set
+set = Native.ElmFire.set False
 
 {-| Write a Json value to a Firebase location and specify a priority for that data.
 -}
 setWithPriority : JE.Value -> Priority -> Location -> Task Error Reference
-setWithPriority = Native.ElmFire.setWithPriority
+setWithPriority = Native.ElmFire.setWithPriority False
 
 {-| Set a priority for the data at a Firebase location.
 -}
@@ -288,7 +290,7 @@ and will leave others untouched.
 
 -}
 update : JE.Value -> Location -> Task Error Reference
-update = Native.ElmFire.update
+update = Native.ElmFire.update False
 
 {-| Delete a Firebase location.
 
@@ -298,7 +300,7 @@ The task may result in an error if the location is invalid
 or you have no permission to remove this data.
 -}
 remove : Location -> Task Error Reference
-remove = Native.ElmFire.remove
+remove = Native.ElmFire.remove False
 
 {-| Transaction: Atomically modify the data at a location
 
@@ -330,6 +332,31 @@ transactionByTask : (Maybe JE.Value -> Task x Action)
            -> Bool
            -> Task Error (Bool, Snapshot)
 transactionByTask = Native.ElmFire.transactionByTask
+
+{-| Queue a `set` operation on the server that get executed as soon as the client disconnects.
+-}
+onDisconnectSet : JE.Value -> Location -> Task Error ()
+onDisconnectSet = Native.ElmFire.set True
+
+{-| Queue a `setWithPriority` operation on the server that get executed as soon as the client disconnects.
+-}
+onDisconnectSetWithPriority : JE.Value -> Priority -> Location -> Task Error ()
+onDisconnectSetWithPriority = Native.ElmFire.setWithPriority True
+
+{-| Queue a `update` operation on the server that get executed as soon as the client disconnects.
+-}
+onDisconnectUpdate : JE.Value -> Location -> Task Error ()
+onDisconnectUpdate = Native.ElmFire.update True
+
+{-| Queue a `remove` operation on the server that get executed as soon as the client disconnects.
+-}
+onDisconnectRemove : Location -> Task Error ()
+onDisconnectRemove = Native.ElmFire.remove True
+
+{-| Cancels all previously queued operations for this location and all children.
+-}
+onDisconnectCancel : Location -> Task Error ()
+onDisconnectCancel = Native.ElmFire.onDisconnectCancel
 
 
 {-| Query a Firebase location by subscription
@@ -531,9 +558,7 @@ limitToLast num query = { query - noLimit | limitToLast = num }
 
 Ordering of the children is presevered.
 So, if the snapshot results from a ordered valueChanged-query
-then toList allows for conserving this ordering as a list.
-
-NB: The field .prevKey is not set in the listed snapshots.
+then toSnapshotList allows for conserving this ordering as a list.
 -}
 toSnapshotList : Snapshot -> List Snapshot
 toSnapshotList = Native.ElmFire.toSnapshotList
@@ -598,5 +623,5 @@ subscribeServerTimeOffset createResponseTask location =
     valueChanged
     (location |> root |> sub ".info/serverTimeOffset")
 
-serverTimestamp : JE.Value
-serverTimestamp = Native.ElmFire.serverTimestamp
+serverTimeStamp : JE.Value
+serverTimeStamp = Native.ElmFire.serverTimeStamp

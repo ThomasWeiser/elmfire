@@ -1,9 +1,16 @@
 # ElmFire
 
-Use the Firebase API in Elm.
+Use the [Firebase API](https://www.firebase.com/docs/web/) in [Elm](http://elm-lang.org/).
 
-This is work in progress.
-We aim to expose the complete [Firebase API](https://www.firebase.com/docs/web/).
+Nearly all features of the Firebase Web API are exposed in this library:
+
+- Setting, removing and modifying values
+- Transactions
+- Querying data, both one-time and per subscription
+- Complex queries with sorting, filtering and limiting
+- Authentication
+- User management
+- Offline capabilities
 
 ## Constructing Firebase Locations
 
@@ -213,6 +220,16 @@ childAdded |> orderByKey |> endAtKey "d"
 childAdded |> orderByPriority |> startAtPriority (NumberPriority 17) (Just "d")
 ```
     
+When doing ordered `valuedChanged` queries it may be useful to map the result
+to a list, conserving the ordering:
+
+```elm
+toSnapshotList : Snapshot -> List Snapshot
+toValueList    : Snapshot -> List JE.Value
+toKeyList      : Snapshot -> List String
+toPairList     : Snapshot -> List (String, JE.Value)
+```
+
 ## Authentication
 
 The sub-module ElmFire.Auth provides all authentication and user management functions
@@ -241,6 +258,17 @@ subscribeAuth
   loc
 ```
 
+## Offline Capabilities
+
+- Detecting connection state changes: `subscribeConnected`
+- Manually disconnect and reconnect:
+  `goOffline`, `goOnline`
+- Managing presence:
+  `onDisconnectSet`, `onDisconnectSetWithPriority`, `onDisconnectUpdate`,
+  `onDisconnectRemove`, `onDisconnectCancel`
+- Handling latency:
+  `subscribeServerTimeOffset`, `serverTimeStamp`
+
 ## Example.elm
 
 There is a very basic example app in `example/src/Example.elm`. To build it:
@@ -261,8 +289,8 @@ Prior to building you may want to put your own Firebase URL in it.
 
 ## Testing
 
-I started a testing app, living in the directory `test`.
-It runs a given sequence of tasks on the Firebase API and logs these steps along with the query results.
+There is a testing app, living in the directory `test`, that covers most of the code.
+It runs a given sequence of tasks on the Firebase API and logs these steps along with the several results.
 
 This app uses a small ad-hoc testing framework for task-based code. 
 
@@ -272,9 +300,8 @@ An older, still functional testing app lives in the directory `demo`.
 
 ## Future work
 
-There are a lot of features I plan to add in the near future:
+Plans for the near future:
 
-* Complete the API, some special features are still missing
 * Synchronization of Dicts, Lists, Arrays. Maybe more convenience functions.
 * Better test app
 * A nice example app
