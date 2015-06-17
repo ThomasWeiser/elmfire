@@ -88,24 +88,31 @@ Elm.Native.ElmFire.make = function (localRuntime) {
     };
   }
 
-  function getRefUnsafe (location) {
+  function getRefStep (location) {
     var ref;
-    if (location.ctor === 'UrlLocation') {
-      ref = new Firebase (location._0);
-    } else if (location.ctor === 'SubLocation') {
-      ref = getRefUnsafe (location._1) .child (location._0);
-    } else if (location.ctor === 'ParentLocation') {
-      ref = getRefUnsafe (location._0) .parent ();
-      if (! ref) { throw ('Error: Root has no parent'); }
-    } else if (location.ctor === 'RootLocation') {
-      ref = getRefUnsafe (location._0) .root ();
-    } else if (location.ctor === 'PushLocation') {
-      ref = getRefUnsafe (location._0) .push ();
-    } else if (location.ctor === 'RefLocation') {
-      ref = location._0;
+    switch (location.ctor) {
+      case 'UrlLocation':
+        ref = new Firebase (location._0);
+        break;
+      case 'SubLocation':
+        ref = getRefStep (location._1) .child (location._0);
+        break;
+      case 'ParentLocation':
+        ref = getRefStep (location._0) .parent ();
+        if (! ref) { throw ('Error: Root has no parent'); }
+        break;
+      case 'RootLocation':
+        ref = getRefStep (location._0) .root ();
+        break;
+      case 'PushLocation':
+        ref = getRefStep (location._0) .push ();
+        break;
+      case 'RefLocation':
+        ref = location._0;
+        break;
     }
     if (! ref) {
-      throw ('Bad Firebase reference.' + pleaseReportThis);
+     throw ('Bad Firebase reference.' + pleaseReportThis);
     }
     return ref;
   }
@@ -113,7 +120,7 @@ Elm.Native.ElmFire.make = function (localRuntime) {
   function getRef (location, failureCallback) {
     var ref;
     try {
-      ref = getRefUnsafe (location);
+      ref = getRefStep (location);
     }
     catch (exception) {
       failureCallback (Task.fail (error2elm ('LocationError', exception.toString ())));
@@ -146,13 +153,13 @@ Elm.Native.ElmFire.make = function (localRuntime) {
     return Task .asyncFunction (function (callback) {
       var ref = getRef (location, callback);
       if (ref) {
-				var onComplete;
-				if (onDisconnect) {
-					ref = ref.onDisconnect ();
-					onComplete = onCompleteCallbackRef (callback, Utils.Tuple0);
-				} else {
-					onComplete = onCompleteCallbackRef (callback, ref)
-				}
+        var onComplete;
+        if (onDisconnect) {
+          ref = ref.onDisconnect ();
+          onComplete = onCompleteCallbackRef (callback, Utils.Tuple0);
+        } else {
+          onComplete = onCompleteCallbackRef (callback, ref)
+        }
         try { ref.set (value, onComplete); }
         catch (exception) { callback (exTaskFail (exception)); }
       }
@@ -163,13 +170,13 @@ Elm.Native.ElmFire.make = function (localRuntime) {
     return Task .asyncFunction (function (callback) {
       var ref = getRef (location, callback);
       if (ref) {
-				var onComplete;
-				if (onDisconnect) {
-					ref = ref.onDisconnect ();
-					onComplete = onCompleteCallbackRef (callback, Utils.Tuple0);
-				} else {
-					onComplete = onCompleteCallbackRef (callback, ref)
-				}
+        var onComplete;
+        if (onDisconnect) {
+          ref = ref.onDisconnect ();
+          onComplete = onCompleteCallbackRef (callback, Utils.Tuple0);
+        } else {
+          onComplete = onCompleteCallbackRef (callback, ref)
+        }
         try { ref.setWithPriority (value, priority2fb (priority), onComplete); }
         catch (exception) { callback (exTaskFail (exception)); }
       }
@@ -181,9 +188,9 @@ Elm.Native.ElmFire.make = function (localRuntime) {
       var ref = getRef (location, callback);
       if (ref) {
         try {
-					ref.setPriority
+          ref.setPriority
                 (priority2fb (priority), onCompleteCallbackRef (callback, ref));
-				}
+        }
         catch (exception) { callback (exTaskFail (exception)); }
       }
     });
@@ -193,37 +200,37 @@ Elm.Native.ElmFire.make = function (localRuntime) {
     return Task .asyncFunction (function (callback) {
       var ref = getRef (location, callback);
       if (ref) {
-				var onComplete;
-				if (onDisconnect) {
-					ref = ref.onDisconnect ();
-					onComplete = onCompleteCallbackRef (callback, Utils.Tuple0);
-				} else {
-					onComplete = onCompleteCallbackRef (callback, ref)
-				}
+        var onComplete;
+        if (onDisconnect) {
+          ref = ref.onDisconnect ();
+          onComplete = onCompleteCallbackRef (callback, Utils.Tuple0);
+        } else {
+          onComplete = onCompleteCallbackRef (callback, ref)
+        }
         try { ref.update (value, onComplete); }
         catch (exception) { callback (exTaskFail (exception)); }
       }
     });
   }
 
-	function remove (onDisconnect, location) {
+  function remove (onDisconnect, location) {
    return Task .asyncFunction (function (callback) {
      var ref = getRef (location, callback);
      if (ref) {
-			var onComplete;
-			if (onDisconnect) {
-				ref = ref.onDisconnect ();
-				onComplete = onCompleteCallbackRef (callback, Utils.Tuple0);
-			} else {
-				onComplete = onCompleteCallbackRef (callback, ref)
-			}
+      var onComplete;
+      if (onDisconnect) {
+        ref = ref.onDisconnect ();
+        onComplete = onCompleteCallbackRef (callback, Utils.Tuple0);
+      } else {
+        onComplete = onCompleteCallbackRef (callback, ref)
+      }
        try { ref.remove (onComplete); }
        catch (exception) { callback (exTaskFail (exception)); }
      }
    });
  }
 
-	function onDisconnectCancel (location) {
+  function onDisconnectCancel (location) {
    return Task .asyncFunction (function (callback) {
      var ref = getRef (location, callback);
      if (ref) {
@@ -300,6 +307,7 @@ Elm.Native.ElmFire.make = function (localRuntime) {
     });
   }
 
+	// Store for current query subscriptions
   var qNum = 0;
   var queries = {};
 
@@ -402,7 +410,7 @@ Elm.Native.ElmFire.make = function (localRuntime) {
         var queryId = nextQueryId ();
         var onResponse = function (fbSnapshot, prevKey) {
           var snapshot = snapshot2elm (queryId, fbSnapshot, prevKey);
-          var responseTask =fromMaybe (createResponseTask (snapshot));
+          var responseTask = fromMaybe (createResponseTask (snapshot));
           if (responseTask !== null) {
             Task .perform (responseTask);
           }
@@ -475,14 +483,6 @@ Elm.Native.ElmFire.make = function (localRuntime) {
     });
   }
 
-  function toListGeneric (snapshot, mapSnapshot) {
-    var arr = [];
-    snapshot .intern_ .forEach (function (fbChildSnapshot) {
-      arr .push (mapSnapshot (fbChildSnapshot));
-    });
-    return List.fromArray (arr);
-  }
-
   function toSnapshotList (snapshot) {
     var arr = [], prevKey = '';
     snapshot .intern_ .forEach (function (fbChildSnapshot) {
@@ -493,6 +493,14 @@ Elm.Native.ElmFire.make = function (localRuntime) {
     });
     return List.fromArray (arr);
   }
+
+	function toListGeneric (snapshot, mapSnapshot) {
+   var arr = [];
+   snapshot .intern_ .forEach (function (fbChildSnapshot) {
+     arr .push (mapSnapshot (fbChildSnapshot));
+   });
+   return List.fromArray (arr);
+ }
 
   function toValueList (snapshot) {
     return toListGeneric (snapshot, function (fbChildSnapshot) {
@@ -530,7 +538,9 @@ Elm.Native.ElmFire.make = function (localRuntime) {
   var serverTimeStamp = Firebase.ServerValue.TIMESTAMP;
 
   return localRuntime.Native.ElmFire.values =
-  {		toUrl: toUrl
+  {
+    // Values exported to Elm
+      toUrl: toUrl
     , key: key
     , open: open
     ,	set: F3 (set)
@@ -538,7 +548,7 @@ Elm.Native.ElmFire.make = function (localRuntime) {
     ,	setPriority: F2 (setPriority)
     ,	update: F3 (update)
     ,	remove: F2 (remove)
-		, onDisconnectCancel: onDisconnectCancel
+    , onDisconnectCancel: onDisconnectCancel
     ,	transaction: F3 (transaction)
     ,	transactionByTask: F3 (transactionByTask)
     ,	subscribeConditional: F4 (subscribeConditional)

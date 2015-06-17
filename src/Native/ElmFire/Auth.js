@@ -24,6 +24,18 @@ Elm.Native.ElmFire.Auth.make = function (localRuntime) {
   var getRef = ElmFire.getRef;
   var pleaseReportThis = ElmFire.pleaseReportThis;
 
+	function toObject (listOfPairs)
+ {
+   var obj = {};
+   while (listOfPairs.ctor !== '[]')
+   {
+     var pair = listOfPairs._0;
+     obj [pair._0] = pair._1;
+     listOfPairs = listOfPairs._1;
+   }
+   return obj;
+ }
+
   function authError2elm (tag, description) {
     return {
       _: {},
@@ -51,18 +63,6 @@ Elm.Native.ElmFire.Auth.make = function (localRuntime) {
     USER_CANCELLED: 'UserCancelled',
     USER_DENIED: 'UserDenied'
   };
-
-  function toObject (listOfPairs)
-  {
-    var obj = {};
-    while (listOfPairs.ctor !== '[]')
-    {
-      var pair = listOfPairs._0;
-      obj [pair._0] = pair._1;
-      listOfPairs = listOfPairs._1;
-    }
-    return obj;
-  }
 
   function fbAuthTaskError (fbAuthError) {
     var tag = fbAuthErrorMap [fbAuthError.code];
@@ -239,7 +239,7 @@ Elm.Native.ElmFire.Auth.make = function (localRuntime) {
             case 'ResetPassword':
               ref.resetPassword ({ email: op._0 }, onComplete);
               break;
-            default: throw ('Bad identification tag.' + pleaseReportThis);
+            default: throw ('Bad user operation tag.' + pleaseReportThis);
           }
         }
         catch (exception) { callback (exAuthTaskFail (exception)); }

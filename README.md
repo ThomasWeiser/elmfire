@@ -205,7 +205,7 @@ Query results can be ordered (by value, by a child's value, by key or by priorit
 filtered by giving a start and/or end value,
 and limited to the first or last certain number of children.
             
-Example queries to be used in once and subscribe:
+Example queries to be used in `once` and `subscribe`:
             
 ```elm
 childAdded |> limitToFirst 2
@@ -221,7 +221,7 @@ childAdded |> orderByPriority |> startAtPriority (NumberPriority 17) (Just "d")
 ```
     
 When doing ordered `valuedChanged` queries it may be useful to map the result
-to a list, conserving the ordering:
+to a list to conserve the ordering:
 
 ```elm
 toSnapshotList : Snapshot -> List Snapshot
