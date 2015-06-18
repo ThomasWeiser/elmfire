@@ -308,11 +308,11 @@ Elm.Native.ElmFire.make = function (localRuntime) {
   }
 
 	// Store for current query subscriptions
-  var qNum = 0;
-  var queries = {};
+  var sNum = 0;
+  var subscriptions = {};
 
-  function nextQueryId () {
-    return 'q' + (++qNum);
+  function nextSubscriptionId () {
+    return 'q' + (++sNum);
   }
 
   function queryEventType (query) {
@@ -386,14 +386,14 @@ Elm.Native.ElmFire.make = function (localRuntime) {
     return ref;
   }
 
-  function snapshot2elm (queryId, fbSnapshot, prevKey) {
+  function snapshot2elm (subscription, fbSnapshot, prevKey) {
     var key = fbSnapshot .key ();
     if (key === null) {
       key = '';
     }
     return {
       _: {},
-      queryId: queryId,
+      subscription: subscription,
       key: key,
       reference: fbSnapshot .ref (),
       value: asMaybe (fbSnapshot .val ()),
@@ -407,9 +407,9 @@ Elm.Native.ElmFire.make = function (localRuntime) {
     return Task .asyncFunction (function (callback) {
       var ref = getRef (location, callback);
       if (ref) {
-        var queryId = nextQueryId ();
+        var subscription = nextSubscriptionId ();
         var onResponse = function (fbSnapshot, prevKey) {
-          var snapshot = snapshot2elm (queryId, fbSnapshot, prevKey);
+          var snapshot = snapshot2elm (subscription, fbSnapshot, prevKey);
           var responseTask = fromMaybe (createResponseTask (snapshot));
           if (responseTask !== null) {
             Task .perform (responseTask);
@@ -418,13 +418,13 @@ Elm.Native.ElmFire.make = function (localRuntime) {
         var onCancel = function (err) {
           var cancellation = {
             ctor: 'QueryError',
-            _0: queryId,
+            _0: subscription,
             _1: fbTaskError (err)
           };
           Task .perform (createCancellationTask (cancellation));
         };
         var eventType = queryEventType (query);
-        queries [queryId] = {
+        subscriptions [subscription] = {
           ref: ref,
           eventType: eventType,
           callback: onResponse,
@@ -436,27 +436,27 @@ Elm.Native.ElmFire.make = function (localRuntime) {
           callback (exTaskFail (exception));
           return;
         }
-        callback (Task.succeed (queryId));
+        callback (Task.succeed (subscription));
       }
     });
   }
 
-  function unsubscribe (queryId) {
+  function unsubscribe (subscription) {
     return Task .asyncFunction (function (callback) {
-      if (queries.hasOwnProperty (queryId)) {
-        var query = queries [queryId];
-        delete queries [queryId];
+      if (subscriptions.hasOwnProperty (subscription)) {
+        var query = subscriptions [subscription];
+        delete subscriptions [subscription];
         try { query.ref.off (query.eventType, query.callback); }
         catch (exception) {
           callback (exTaskFail (exception));
           return;
         }
         Task.perform (query.createCancellationTask ({
-          ctor: 'Unsubscribed', _0: queryId
+          ctor: 'Unsubscribed', _0: subscription
         }));
         callback (Task.succeed (Utils.Tuple0));
       } else {
-        callback (Task.fail ({ ctor: 'UnknownQueryId' }));
+        callback (Task.fail ({ ctor: 'UnknownSubscription' }));
       }
     });
   }

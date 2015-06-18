@@ -136,8 +136,8 @@ subscribe   : (Snapshot -> Task x a) ->
               (Cancellation -> Task y b) ->
               Query ->
               Location ->
-              Task Error QueryId
-unsubscribe : QueryId -> Task Error ()
+              Task Error Subscription
+unsubscribe : Subscription -> Task Error ()
 ```
     
 Use `once` to listen to exactly one event of the given type.
@@ -155,11 +155,11 @@ The second parameter is a function used to construct a task that is run when the
 
 The third and fourth parameter of `subscribe` are the same as the first two of `once`.
 
-On success the `subscribe` task returns a QueryId, which can be used to match the corresponding responses and to cancel the query.
+On success the `subscribe` task returns a Subscription, an identifier that can be used to match the corresponding responses and to cancel the query.
 
 ```elm
 type alias Snapshot =
-  { queryId: QueryId
+  { subscription: Subscription
   , key: String
   , reference: Reference
   , value: Maybe Value
@@ -167,11 +167,11 @@ type alias Snapshot =
   , priority: Priority
   }
 type Cancellation
-  = Unsubscribed QueryId
-  | QueryError QueryId Error
+  = Unsubscribed Subscription
+  | QueryError Subscription Error
 ```
 
-A `Snapshot` carries the corresponding `QueryId` and `Just Value` for the Json value or `Nothing` if the location doesn't exist.
+A `Snapshot` carries the corresponding `Subscription` and `Just Value` for the Json value or `Nothing` if the location doesn't exist.
 
 `key` corresponds to the last part of the path.
 It is the empty string for the root.
@@ -183,7 +183,7 @@ Example:
 responses : Signal.Mailbox (Maybe Snapshot)
 responses = Signal.mailbox Nothing
 
-port query : Task Error QueryId
+port query : Task Error Subscription
 port query =
   subscribe
     (Signal.send responses.address << Just)

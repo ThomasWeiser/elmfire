@@ -12,7 +12,7 @@ module ElmFire
   , Action (..)
   , transaction, transactionByTask
   , Query
-  , QueryId
+  , Subscription
   , Cancellation (..)
   , subscribe, subscribeConditional, unsubscribe, once
   , valueChanged, childAdded, childChanged, childRemoved, childMoved
@@ -48,7 +48,7 @@ module ElmFire
 @docs Action, transaction, transactionByTask
 
 # Querying
-@docs Query, QueryId, Cancellation,
+@docs Query, Subscription, Cancellation,
 subscribe, unsubscribe, once,
 valueChanged, childAdded, childChanged, childRemoved, childMoved
 
@@ -92,7 +92,7 @@ type ErrorType
   | TooBigError
   | OtherFirebaseError
   | AuthError AuthErrorType
-  | UnknownQueryId
+  | UnknownSubscription
 
 {-| Errors reported from Authentication Module -}
 type AuthErrorType
@@ -150,17 +150,17 @@ type Priority
   | NumberPriority Float
   | StringPriority String
 
-{-| Unique opaque identifier for each executed query subscription -}
-type QueryId = QueryId
+{-| Unique opaque identifier for running subscriptions -}
+type Subscription = Subscription
 
 {-| Message about cancelled query -}
 type Cancellation
-  = Unsubscribed QueryId
-  | QueryError QueryId Error
+  = Unsubscribed Subscription
+  | QueryError Subscription Error
 
 {-| Message about a received value.
 
-- `queryId` can be used to correlate the response to the corresponding query.
+- `subscription` can be used to correlate the response to the corresponding query.
 - `value`is either `Just` a Json value or it is `Nothing` when the queried location doesn't exist.
 - `reference` points to the queried location
 - `key` is relevant particular for child queries and specifies the key of the data.
@@ -168,7 +168,7 @@ type Cancellation
 - `priority` returns the given priority of the data.
 -}
 type alias Snapshot =
-  { queryId: QueryId
+  { subscription: Subscription
   , key: String
   , reference: Reference
   , value: Maybe JE.Value
@@ -364,7 +364,7 @@ onDisconnectCancel = Native.ElmFire.onDisconnectCancel
 (This early version of ElmFire only supports simple value queries,
 without ordering and filtering.)
 
-On success the task returns a QueryId,
+On success the task returns a Subscription,
 which can be used to match the corresponding responses
 and to unsubscribe the query.
 
@@ -385,7 +385,7 @@ subscribe : (Snapshot -> Task x a)
          -> (Cancellation -> Task y b)
          -> Query q
          -> Location
-         -> Task Error QueryId
+         -> Task Error Subscription
 subscribe createResponseTask =
   subscribeConditional (Just << createResponseTask)
 
@@ -398,11 +398,11 @@ subscribeConditional : (Snapshot -> Maybe (Task x a))
          -> (Cancellation -> Task y b)
          -> Query q
          -> Location
-         -> Task Error QueryId
+         -> Task Error Subscription
 subscribeConditional = Native.ElmFire.subscribeConditional
 
 {-| Cancel a query subscription -}
-unsubscribe : QueryId -> Task Error ()
+unsubscribe : Subscription -> Task Error ()
 unsubscribe = Native.ElmFire.unsubscribe
 
 {-| Query a Firebase location once
@@ -592,7 +592,7 @@ goOnline = Native.ElmFire.setOffline False
 {-| Subscribe to connection state changes -}
 subscribeConnected : (Bool -> Task x a)
          -> Location
-         -> Task Error QueryId
+         -> Task Error Subscription
 subscribeConnected createResponseTask location =
   subscribeConditional
     ( \snapshot -> case snapshot.value of
@@ -609,7 +609,7 @@ subscribeConnected createResponseTask location =
 {-| Subscribe to server time offset -}
 subscribeServerTimeOffset : (Time -> Task x a)
          -> Location
-         -> Task Error QueryId
+         -> Task Error Subscription
 subscribeServerTimeOffset createResponseTask location =
   subscribeConditional
     ( \snapshot -> case snapshot.value of
