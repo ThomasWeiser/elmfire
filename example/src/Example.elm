@@ -13,7 +13,7 @@ import Json.Encode as JE exposing (string, encode)
 
 import ElmFire exposing
   ( fromUrl, set, subscribe, valueChanged
-  , Reference, Snapshot, QueryId, Error
+  , Reference, Snapshot, Subscription, Error
   )
 
 -- You may want to change this url
@@ -33,7 +33,7 @@ port runSet = Signal.map
 doNothing : a -> Task x ()
 doNothing = always (Task.succeed ())
 
-port runQuery : Task Error QueryId
+port runQuery : Task Error Subscription
 port runQuery =
     subscribe
         (Signal.send values.address << .value)

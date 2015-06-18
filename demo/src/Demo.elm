@@ -22,7 +22,7 @@ import ElmFire exposing
   , subscribe, unsubscribe, once
   , valueChanged, childAdded, childChanged, childRemoved, childMoved
   , Location, Reference, Priority (..), Cancellation (..)
-  , Snapshot, QueryId, Error, Query
+  , Snapshot, Subscription, Error, Query
   )
 
 -------------------------------------------------------------------------------
@@ -140,7 +140,7 @@ viewLogEntry logEntry =
   LogResponse response ->
     Just <| case response of
       Data snapshot ->
-        line "response" (toString snapshot.queryId) (viewSnapshot snapshot)
+        line "response" (toString snapshot.subscription) (viewSnapshot snapshot)
       Canceled (cancellation) ->
         case cancellation of
           Unsubscribed id ->
@@ -199,7 +199,7 @@ doRemove : String -> Location -> Task Error Reference
 doRemove step location =
   intercept (always "synced") step (remove location)
 
-doSubscribe : String -> Query q -> Location -> Task Error QueryId
+doSubscribe : String -> Query q -> Location -> Task Error Subscription
 doSubscribe step query location =
   intercept toString step
     ( subscribe
@@ -209,9 +209,9 @@ doSubscribe step query location =
         location
     )
 
-doUnsubscribe : String -> QueryId -> Task Error ()
-doUnsubscribe step queryId =
-  intercept (always "done") step (unsubscribe queryId)
+doUnsubscribe : String -> Subscription -> Task Error ()
+doUnsubscribe step subscription =
+  intercept (always "done") step (unsubscribe subscription)
 
 doOnce : String -> Query q -> Location -> Task Error (Maybe JE.Value)
 doOnce step query location =
@@ -274,7 +274,7 @@ port runTasks =
   `andAnyway` doSet "set4 add child" (JE.string "at Firebase") (loc |> sub "c")
   `andAnyway` doSleep "4" 2
   `andAnyway` ( doSubscribe "subscribe" valueChanged loc
-                `andThen` \queryId -> doUnsubscribe "unsubscribe" queryId
+                `andThen` \subscription -> doUnsubscribe "unsubscribe" subscription
               )
   `andAnyway` doOnce "query once" valueChanged loc
   `andAnyway` doRemove "remove child" (loc |> sub "b")
