@@ -270,43 +270,6 @@ Elm.Native.ElmFire.make = function (localRuntime) {
     });
   }
 
-  function transactionByTask (createUpdateTask, location, applyLocally) {
-    return Task .asyncFunction (function (callback) {
-      var ref = getRef (location, callback);
-      if (ref) {
-        var fbUpdateFunc = function (prevVal) {
-          var updateTask = createUpdateTask (asMaybe (prevVal));
-          Task. perform (updateTask);
-          // TODO: What is the right way to get a task's result?
-          //       Do we have to employ andThen and onError for that?
-          if (updateTask.tag === 'Succeed') {
-            var action = updateTask.value;
-            switch (action.ctor) {
-              case 'Abort':  return;
-              case 'Remove': return null;
-              case 'Set':    return action._0;
-              default: 	throw ('Bad action.' + pleaseReportThis);
-            }
-            // return undefined to abort when updateTask failed
-          }
-        };
-        var onComplete = function (err, committed, fbSnapshot) {
-          if (err) {
-            callback (fbTaskFail (err));
-          } else {
-            var snapshot = snapshot2elm ('_transaction_', fbSnapshot, null);
-            var res = Utils.Tuple2 (committed, snapshot);
-            callback (Task.succeed (res));
-          }
-        };
-        try { ref.transaction (fbUpdateFunc, onComplete, applyLocally); }
-        catch (exception) {
-          callback (exTaskFail (exception));
-        }
-      }
-    });
-  }
-
 	// Store for current query subscriptions
   var sNum = 0;
   var subscriptions = {};
@@ -550,7 +513,6 @@ Elm.Native.ElmFire.make = function (localRuntime) {
     ,	remove: F2 (remove)
     , onDisconnectCancel: onDisconnectCancel
     ,	transaction: F3 (transaction)
-    ,	transactionByTask: F3 (transactionByTask)
     ,	subscribeConditional: F4 (subscribeConditional)
     ,	unsubscribe: unsubscribe
     ,	once: F2 (once)

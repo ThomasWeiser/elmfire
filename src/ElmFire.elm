@@ -10,7 +10,7 @@ module ElmFire
   , onDisconnectUpdate, onDisconnectRemove, onDisconnectCancel
   , Snapshot
   , Action (..)
-  , transaction, transactionByTask
+  , transaction
   , Query
   , Subscription
   , Cancellation (..)
@@ -45,7 +45,7 @@ module ElmFire
 @docs Snapshot
 
 # Transactions
-@docs Action, transaction, transactionByTask
+@docs Action, transaction
 
 # Querying
 @docs Query, Subscription, Cancellation,
@@ -318,20 +318,6 @@ transaction : (Maybe JE.Value -> Action)
            -> Bool
            -> Task Error (Bool, Snapshot)
 transaction = Native.ElmFire.transaction
-
-{-| Transaction with an update task: Atomically modify the data at a location
-
-This is the same as `transaction` with the exception that the new value is provided by
-running a task instead of a pure function.
-
-A failure of the update task results in a abortion of the transaction
-(same as success with `Abort`).
--}
-transactionByTask : (Maybe JE.Value -> Task x Action)
-           -> Location
-           -> Bool
-           -> Task Error (Bool, Snapshot)
-transactionByTask = Native.ElmFire.transactionByTask
 
 {-| Queue a `set` operation on the server that get executed as soon as the client disconnects.
 -}

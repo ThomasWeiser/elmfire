@@ -53,10 +53,6 @@ action1 maybeValue =
         _ -> Remove
     _ -> Abort
 
-action1AsTask : Maybe JE.Value -> Task () Action
-action1AsTask maybeValue =
-  Task.succeed (action1 maybeValue)
-
 type Response
   = NoResponse
   | Data Snapshot
@@ -240,14 +236,6 @@ test1 =
   |>> meets "committed and returned changed value"
             (\(committed, snapshot) ->
                 committed && snapshot.value == Just (JE.string "Elmers!")
-            )
-
-  |>- test  "transactionByTask on that child"
-            (transactionByTask action1AsTask (loc |> parent |> sub key) True)
-  |>> printResult
-  |>> meets "committed and returned changed value"
-            (\(committed, snapshot) ->
-                committed && snapshot.value == Just (JE.string "Elmers!!")
             )
 
   |>- test  "once valueChanged at non-existing location" (once valueChanged (sub "_non_existing_key_" loc))

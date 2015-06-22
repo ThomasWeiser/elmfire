@@ -92,18 +92,12 @@ port write =
 
 Atomic modifications of the data at a location can be done by transactions.
 
-A transaction takes an update function (or alternatively an update task)
-that maps the previous value to a new value.
+A transaction takes an update function that maps the previous value to a new value.
 In case of a conflict with concurrent updates by other clients
 the update function is called repeatedly until no more conflict is encountered.
 
 ```elm
 transaction : (Maybe Value -> Action) ->
-              Location ->
-              Bool ->
-              Task Error (Bool, Snapshot)
-transactionByTask :
-              (Maybe Value -> Task x Action) ->
               Location ->
               Bool ->
               Task Error (Bool, Snapshot)
