@@ -420,8 +420,12 @@ The second parameter specifies the location to be queried.
 once : Query q -> Location -> Task Error Snapshot
 once = Native.ElmFire.once
 
-{-| A query secification: event type, ordering, filtering, limiting -}
-type alias Query a = { a | tag : QueryOptions }
+{-| A query secification: event type, ordering, filtering, limiting
+
+The type parameter `q` facilitates compile-time checks for valid combinations of the specification parts.
+It has no further meaning for the API user.
+-}
+type alias Query q = { q | tag : QueryOptions }
 
 type QueryOptions = QueryOptions
 emptyOptions =

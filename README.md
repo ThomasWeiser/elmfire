@@ -131,10 +131,10 @@ port trans =
 ## Querying
 
 ```elm
-once        : Query -> Location -> Task Error Snapshot       
+once        : Query q -> Location -> Task Error Snapshot       
 subscribe   : (Snapshot -> Task x a) ->
               (Cancellation -> Task y b) ->
-              Query ->
+              Query q ->
               Location ->
               Task Error Subscription
 unsubscribe : Subscription -> Task Error ()
