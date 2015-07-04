@@ -113,10 +113,10 @@ port trans =
     ( \maybeVal -> case maybeVal of
         Just value ->
           case Json.Decode.decodeValue Json.Decode.int value of
-            Ok counter -> Set (Json.Encode.int (counter + 1)
+            Ok counter -> Set (Json.Encode.int (counter + 1))
             _          -> Abort
         Nothing ->
-          Set (Json.Encode.int (1)
+          Set (Json.Encode.int 1)
     ) location False
   `andThen`
   (\(committed, snapshot) -> ... )
