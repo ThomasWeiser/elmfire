@@ -270,7 +270,7 @@ Elm.Native.ElmFire.make = function (localRuntime) {
     });
   }
 
-	// Store for current query subscriptions
+  // Store for current query subscriptions
   var sNum = 0;
   var subscriptions = {};
 
@@ -354,12 +354,14 @@ Elm.Native.ElmFire.make = function (localRuntime) {
     if (key === null) {
       key = '';
     }
+    var value = fbSnapshot .val ();
     return {
       _: {},
       subscription: subscription,
       key: key,
       reference: fbSnapshot .ref (),
-      value: asMaybe (fbSnapshot .val ()),
+      existing: value !== null,
+      value: value,
       prevKey: asMaybe (prevKey),
       priority: priority2elm (fbSnapshot .getPriority ()),
       intern_: fbSnapshot
@@ -457,7 +459,7 @@ Elm.Native.ElmFire.make = function (localRuntime) {
     return List.fromArray (arr);
   }
 
-	function toListGeneric (snapshot, mapSnapshot) {
+  function toListGeneric (snapshot, mapSnapshot) {
    var arr = [];
    snapshot .intern_ .forEach (function (fbChildSnapshot) {
      arr .push (mapSnapshot (fbChildSnapshot));

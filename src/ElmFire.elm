@@ -161,7 +161,8 @@ type Cancellation
 {-| Message about a received value.
 
 - `subscription` can be used to correlate the response to the corresponding query.
-- `value`is either `Just` a Json value or it is `Nothing` when the queried location doesn't exist.
+- `value` is a Json value (and `null` when the queried location doesn't exist).
+- `existing` is `False` iff there is no value at the location, which can only occur in `valueChanged`-queries
 - `reference` points to the queried location
 - `key` is relevant particular for child queries and specifies the key of the data.
 - `prevKey` specifies the key of previous child (or Nothing for the first child), revealing the ordering. It's always Nothing for valueChanged queries.
@@ -171,7 +172,8 @@ type alias Snapshot =
   { subscription: Subscription
   , key: String
   , reference: Reference
-  , value: Maybe JE.Value
+  , existing: Bool
+  , value: JE.Value
   , prevKey: Maybe String
   , priority: Priority
   , intern_: SnapshotFB
@@ -585,12 +587,9 @@ subscribeConnected : (Bool -> Task x a)
          -> Task Error Subscription
 subscribeConnected createResponseTask location =
   subscribeConditional
-    ( \snapshot -> case snapshot.value of
-        Just val ->
-          case JD.decodeValue JD.bool val of
-            Ok state -> Just (createResponseTask state)
-            Err _    -> Nothing
-        Nothing  -> Nothing
+    ( \snapshot -> case JD.decodeValue JD.bool snapshot.value of
+        Ok state -> Just (createResponseTask state)
+        Err _    -> Nothing
     )
     (always (Task.succeed ()))
     valueChanged
@@ -602,12 +601,9 @@ subscribeServerTimeOffset : (Time -> Task x a)
          -> Task Error Subscription
 subscribeServerTimeOffset createResponseTask location =
   subscribeConditional
-    ( \snapshot -> case snapshot.value of
-        Just val ->
-          case JD.decodeValue JD.float val of
-            Ok offset -> Just (createResponseTask (offset * Time.millisecond))
-            Err _     -> Nothing
-        Nothing  -> Nothing
+    ( \snapshot -> case JD.decodeValue JD.float snapshot.value of
+        Ok offset -> Just (createResponseTask (offset * Time.millisecond))
+        Err _     -> Nothing
     )
     (always (Task.succeed ()))
     valueChanged

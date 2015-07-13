@@ -19,8 +19,8 @@ import ElmFire exposing
 -- You may want to change this url
 url = "https://elmfire.firebaseio-demo.com/example"
 
-values : Mailbox (Maybe JE.Value)
-values = mailbox Nothing
+values : Mailbox JE.Value
+values = mailbox JE.null
 
 inputString : Mailbox String
 inputString = mailbox ""
@@ -41,9 +41,9 @@ port runQuery =
         valueChanged
         (fromUrl url)
 
-view : Maybe JE.Value -> Html
-view maybeValue =
-  let outputText = Maybe.withDefault "no value" <| Maybe.map (encode 0) maybeValue
+view : JE.Value -> Html
+view value =
+  let outputText = encode 0 value
   in
   div []
   [ text "ElmFire test at: "

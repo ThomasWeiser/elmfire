@@ -106,8 +106,10 @@ test1 =
   |>> succeeds
   |>- test  "onDisconnectSet has not written yet"
             (once valueChanged (loc |> parent |> sub "onlineState"))
-  |>> meets "value is Nothing"
-            (\snapshot -> snapshot.value == Nothing)
+  |>> meets "value is not existing"
+            (\snapshot -> not snapshot.existing)
+  |>> meets "value is null"
+            (\snapshot -> snapshot.value == JE.null)
 
   |>- test  "go offline" goOffline
   |>> succeeds
@@ -117,7 +119,7 @@ test1 =
   |>- test  "onDisconnectSet has now written the value"
             (once valueChanged (loc |> parent |> sub "onlineState"))
   |>> meets "value is written"
-            (\snapshot -> snapshot.value == Just (JE.string "disconnected"))
+            (\snapshot -> snapshot.value == JE.string "disconnected")
 
   -- User management tests ----------------------------------------------------
 
@@ -202,7 +204,7 @@ test1 =
   |>- test  "once valueChanged (at child)" (once valueChanged loc)
   |>> printResult
   |>> meets "once returned same key" (\snapshot -> snapshot.key == key ref)
-  |>> meets "once returned right value" (\snapshot -> snapshot.value == Just (JE.string "Hello"))
+  |>> meets "once returned right value" (\snapshot -> snapshot.value == JE.string "Hello")
   |>> meets "once returned right prevKey" (\snapshot -> snapshot.prevKey == Nothing)
   |>> meets "once returned right priority" (\snapshot -> snapshot.priority == NumberPriority 42)
   |>> map exportValue
@@ -235,12 +237,11 @@ test1 =
   |>> printResult
   |>> meets "committed and returned changed value"
             (\(committed, snapshot) ->
-                committed && snapshot.value == Just (JE.string "Elmers!")
+                committed && snapshot.value == JE.string "Elmers!"
             )
 
   |>- test  "once valueChanged at non-existing location" (once valueChanged (sub "_non_existing_key_" loc))
-  |>> printResult
-  |>> meets "returns Nothing" (\snapshot -> snapshot.value == Nothing)
+  |>> meets "returns non-existing" (\snapshot -> not snapshot.existing)
 
   |>- test  "set without permission"
             ( set (JE.null) (fromUrl url |> sub "unaccessible") )
@@ -266,7 +267,6 @@ test1 =
 
   |>- test  "transaction without permission"
             (transaction action1 (fromUrl url |> sub "unaccessible") True)
-  |>> printResult
   |>> meets "not committed" (\(committed, _) -> not committed)
   |>- clear
 
@@ -299,7 +299,7 @@ test1 =
   -- Test complex queries, using the dino example data from Firebase docs -----
 
   |>- test  "dino test data" (once valueChanged dino)
-  |>> map (.value >> Maybe.withDefault (JE.null) >> JE.encode 2)
+  |>> map (.value >> JE.encode 2)
   |>> printString
 
   |>- test  "toSnapshotList" (once valueChanged (dino |> sub "scores"))

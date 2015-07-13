@@ -153,10 +153,9 @@ viewSnapshot snapshot =
   let k = key snapshot.reference in
   (if k == "" then "(root)" else k) ++ ": " ++ (viewValue snapshot.value)
 
-viewValue : Maybe JE.Value -> String
-viewValue maybeValue = case maybeValue of
-  Just value -> JE.encode 0 value
-  Nothing    -> "no value"
+viewValue : JE.Value -> String
+viewValue value =
+  JE.encode 0 value
 
 main = Signal.map view state
 
@@ -213,7 +212,7 @@ doUnsubscribe : String -> Subscription -> Task Error ()
 doUnsubscribe step subscription =
   intercept (always "done") step (unsubscribe subscription)
 
-doOnce : String -> Query q -> Location -> Task Error (Maybe JE.Value)
+doOnce : String -> Query q -> Location -> Task Error JE.Value
 doOnce step query location =
   intercept viewValue step
     ( once query location

@@ -156,7 +156,8 @@ type alias Snapshot =
   { subscription: Subscription
   , key: String
   , reference: Reference
-  , value: Maybe Value
+  , existing: Bool
+  , value: Value
   , prevKey: Maybe String
   , priority: Priority
   }
@@ -165,8 +166,11 @@ type Cancellation
   | QueryError Subscription Error
 ```
 
-A `Snapshot` carries the corresponding `Subscription` and `Just Value` for the Json value or `Nothing` if the location doesn't exist.
+A `Snapshot` carries the corresponding `Subscription` and a `Value` for the Json value.
 
+In queries of type `valueChanged` the result may be that there is no value at the queried location.
+In this case `existing` will be `False` and value will be the Json value of `null`.
+ 
 `key` corresponds to the last part of the path.
 It is the empty string for the root.
 Keys are relevant notably for child queries.
