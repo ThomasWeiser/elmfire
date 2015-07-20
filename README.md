@@ -15,14 +15,14 @@ Nearly all features of the Firebase Web API are exposed in this library:
 ## Installation
 
 This package is not yet available from the official package catalog, so `elm-package` will not find it.
-In the meantime please clone the repo directly from github
+In the meantime please clone the repo directly from github:
 
 ```sh
 cd your/project/directory
 git clone https://github.com/ThomasWeiser/elmfire.git
 ```
 
-and add its source directory to your project's `elm-package.json`
+and add its source directory to your project's `elm-package.json` and declare that it is using native modules:
 
 ```
 { ...
@@ -30,6 +30,7 @@ and add its source directory to your project's `elm-package.json`
     "src",
     "elmfire/src"
   ],
+  "native-modules": true,
   ...
 }
 ```
@@ -40,6 +41,8 @@ Then you can import the module in your Elm code, e.g.:
 import ElmFire exposing (..)
 import ElmFire.Auth as Auth -- if you need the authentication
 ```
+
+See also this minimal working [example](#exampleelm).
 
 ## API Usage
 
@@ -313,8 +316,6 @@ Alternatively without using `make`:
 cd example
 elm make --output Example.html src/Example.elm
 ```
-
-Prior to building you may want to put your own Firebase URL in it.
 
 ## Testing
 

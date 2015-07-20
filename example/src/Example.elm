@@ -16,7 +16,7 @@ import ElmFire exposing
   , Reference, Snapshot, Subscription, Error
   )
 
--- You may want to change this url
+-- You may want to change this url, but you don't have to
 url = "https://elmfire.firebaseio-demo.com/example"
 
 values : Mailbox JE.Value
