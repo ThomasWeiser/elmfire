@@ -14,7 +14,7 @@ module ElmFire
   , Query
   , Subscription
   , Cancellation (..)
-  , subscribe, subscribeConditional, unsubscribe, once
+  , subscribe, unsubscribe, once
   , valueChanged, childAdded, childChanged, childRemoved, childMoved
   , orderByChild, orderByValue, orderByKey, orderByPriority
   , startAtValue, startAtKey, startAtPriority
