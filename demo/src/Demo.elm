@@ -155,6 +155,9 @@ viewSnapshot snapshot =
 
 viewValue : JE.Value -> String
 viewValue value =
+  -- Comparing JE.null throws a runtime error,
+  -- see https://github.com/elm-lang/core/pull/294
+  -- if JE.null == value then "no value" else JE.encode 0 value
   JE.encode 0 value
 
 main = Signal.map view state

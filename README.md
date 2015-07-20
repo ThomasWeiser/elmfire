@@ -12,7 +12,38 @@ Nearly all features of the Firebase Web API are exposed in this library:
 - User management
 - Offline capabilities
 
-## Constructing Firebase Locations
+## Installation
+
+This package is not yet available from the official package catalog, so `elm-package` will not find it.
+In the meantime please clone the repo directly from github
+
+```sh
+cd your/project/directory
+git clone https://github.com/ThomasWeiser/elmfire.git
+```
+
+and add its source directory to your project's `elm-package.json`
+
+```
+{ ...
+  "source-directories": [
+    "src",
+    "elmfire/src"
+  ],
+  ...
+}
+```
+
+Then you can import the module in your Elm code, e.g.:
+
+```elm
+import ElmFire exposing (..)
+import ElmFire.Auth as Auth -- if you need the authentication
+```
+
+## API Usage
+
+### Constructing Firebase Locations
 
 To refer to a Firebase path you need a `Location`.
 Locations can be built with the following functions:
@@ -41,7 +72,7 @@ location =
     |> push
 ```
 
-## References to Locations
+### References to Locations
 
 Most actions on a Firebase location return a reference to that location.
 Likewise, query results contain a reference to the location of the reported value.
@@ -62,7 +93,7 @@ location : Reference -> Location
 open     : Location -> Task Error Reference
 ```
 
-## Modifying Values
+### Modifying Values
 
 ```elm
 set             : Value -> Location -> Task Error Reference
@@ -88,7 +119,7 @@ port write =
   (\ref -> ... ref.key ... )
 ```
     
-## Transactions
+### Transactions
 
 Atomic modifications of the data at a location can be done by transactions.
 
@@ -122,7 +153,7 @@ port trans =
   (\(committed, snapshot) -> ... )
 ```
 
-## Querying
+### Querying
 
 ```elm
 once        : Query q -> Location -> Task Error Snapshot       
@@ -197,7 +228,7 @@ port query =
         responses.signal
 ```
             
-## Ordering, Filtering and Limiting Queries
+### Ordering, Filtering and Limiting Queries
 
 Query results can be ordered (by value, by a child's value, by key or by priority),
 filtered by giving a start and/or end value,
@@ -228,7 +259,7 @@ toKeyList      : Snapshot -> List String
 toPairList     : Snapshot -> List (String, JE.Value)
 ```
 
-## Authentication
+### Authentication
 
 The sub-module ElmFire.Auth provides all authentication and user management functions
 that are offered by Firebase.
@@ -256,7 +287,7 @@ subscribeAuth
   loc
 ```
 
-## Offline Capabilities
+### Offline Capabilities
 
 - Detecting connection state changes: `subscribeConnected`
 - Manually disconnect and reconnect:
