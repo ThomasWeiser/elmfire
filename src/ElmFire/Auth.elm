@@ -73,48 +73,53 @@ type Identification
   | OAuthCredentials String (List (String, String))
   | CustomToken String
 
+{-| Identify as a anonymous, temporary guest -}
 asAnonymous : Identification
 asAnonymous = Anonymous
 
+{-| Identify with email and password -}
 withPassword : String -> String -> Identification
 withPassword = Password
 
+{-| Identify using a popup-based OAuth flow -}
 withOAuthPopup : String -> Identification
 withOAuthPopup = OAuthPopup
 
+{-| Identify using a redirect-based OAuth flow -}
 withOAuthRedirect : String -> Identification
 withOAuthRedirect = OAuthRedirect
 
+{-| Identify using OAuth access token -}
 withOAuthAccessToken : String -> String -> Identification
 withOAuthAccessToken = OAuthAccessToken
 
+{-| Identify using OAuth credentials -}
 withOAuthCredentials : String -> List (String, String) -> Identification
 withOAuthCredentials = OAuthCredentials
 
+{-| Identify using an authentication token or Firebase secret -}
 withCustomToken : String -> Identification
 withCustomToken = CustomToken
 
-{-| Optional authentication parameter
+{-| Optional authentication parameters
 
 All providers allow option `remember` to specify the presistency of authentication.
 
-Specific provider may accept additional options. See firebase docs.
+Specific provider may accept additional options. See Firebase docs.
 -}
 type alias Options = List (String, String)
 
-{- Option for default persistence:
+{-| Option for default persistence:
 Sessions are persisted for as long as it is configured in the Firebase's dashboard.
 -}
 rememberDefault = ("remember", "default")
 
-{- Option for session only persistence:
-
+{-| Option for session only persistence:
 Persistence is limited to the lifetime of the current window.
 -}
 rememberSessionOnly = ("remember", "sessionOnly")
 
-{- Option for no persistence:
-
+{-| Option for no persistence:
 No persistent authentication data is used. End authentication as soon as the page is closed.
 -}
 rememberNone = ("remember", "none")
