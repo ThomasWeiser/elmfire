@@ -1,13 +1,10 @@
 module ElmFire
-  ( Error, ErrorType (..), AuthErrorType (..)
-  , Location
+  ( Location
   , fromUrl, sub, parent, root, push
   , Reference
   , open, key, toUrl, location
   , Priority (..)
   , set, setWithPriority, setPriority, update, remove
-  , onDisconnectSet, onDisconnectSetWithPriority
-  , onDisconnectUpdate, onDisconnectRemove, onDisconnectCancel
   , Snapshot
   , Action (..)
   , transaction
@@ -17,14 +14,16 @@ module ElmFire
   , subscribe, unsubscribe, once
   , valueChanged, childAdded, childChanged, childRemoved, childMoved
   , orderByChild, orderByValue, orderByKey, orderByPriority
-  , startAtValue, startAtKey, startAtPriority
-  , endAtValue, endAtKey, endAtPriority
+  , startAtValue, endAtValue, startAtKey, endAtKey, startAtPriority, endAtPriority
   , limitToFirst, limitToLast
   , toSnapshotList, toValueList, toKeyList,toPairList
   , exportValue
   , goOffline, goOnline
-  , subscribeConnected, subscribeServerTimeOffset
-  , serverTimeStamp
+  , subscribeConnected
+  , onDisconnectSet, onDisconnectSetWithPriority
+  , onDisconnectUpdate, onDisconnectRemove, onDisconnectCancel
+  , serverTimeStamp, subscribeServerTimeOffset
+  , Error, ErrorType (..), AuthErrorType (..)
   ) where
 
 
@@ -50,8 +49,8 @@ module ElmFire
 
 # Querying
 @docs Query, Subscription, Cancellation,
-subscribe, unsubscribe, once,
-valueChanged, childAdded, childChanged, childRemoved, childMoved
+  subscribe, unsubscribe, once,
+  valueChanged, childAdded, childChanged, childRemoved, childMoved
 
 # Ordering
 @docs orderByChild, orderByValue, orderByKey, orderByPriority
@@ -62,16 +61,16 @@ valueChanged, childAdded, childChanged, childRemoved, childMoved
 # Limiting
 @docs limitToFirst, limitToLast
 
-# Snapshort Processing
-@docs toSnapshotList, toValueList, toKeyList, toPairList, export
+# Snapshot Processing
+@docs toSnapshotList, toValueList, toKeyList, toPairList, exportValue
 
 # Connection State and Offline Capabilities
-@doc goOffline, goOnline, subscribeConnected,
-onDisconnectSet, onDisconnectSetWithPriority,
-onDisconnectUpdate, onDisconnectRemove, onDisconnectCancel
+@docs goOffline, goOnline, subscribeConnected,
+  onDisconnectSet, onDisconnectSetWithPriority,
+  onDisconnectUpdate, onDisconnectRemove, onDisconnectCancel
 
 # Server Time
-@doc serverTimeStamp, subscribeServerTimeOffset
+@docs serverTimeStamp, subscribeServerTimeOffset
 
 # Error Reporting
 @docs Error, ErrorType, AuthErrorType
@@ -430,19 +429,33 @@ emptyOptions =
 type QueryEvent =
   ValueChanged | ChildAdded | ChildChanged | ChildRemoved | ChildMoved
 
+type alias SimpleQuery =
+  { tag : QueryOptions
+  , queryEvent : QueryEvent
+  , noOrder : Bool
+  , noLimit : Bool
+  , noStart : Bool
+  , noEnd : Bool
+  }
+
 {-| Query value changes at the referenced location -}
+valueChanged : SimpleQuery
 valueChanged = { emptyOptions | queryEvent = ValueChanged }
 
 {-| Query child added -}
+childAdded : SimpleQuery
 childAdded   = { emptyOptions | queryEvent = ChildAdded }
 
 {-| Query child changed -}
+childChanged : SimpleQuery
 childChanged = { emptyOptions | queryEvent = ChildChanged }
 
 {-| Query child removed -}
+childRemoved : SimpleQuery
 childRemoved = { emptyOptions | queryEvent = ChildRemoved }
 
 {-| Query child moved -}
+childMoved : SimpleQuery
 childMoved   = { emptyOptions | queryEvent = ChildMoved }
 
 {-| Order query results by the value of a named child -}
