@@ -27,12 +27,13 @@ module ElmFire
   , serverTimeStamp
   ) where
 
-{-| Elm bindings to Firebase.
 
-# Firebase locations
+{-| Elm Bindings to Firebase.
+
+# Firebase Locations
 @docs Location, fromUrl, sub, parent, root, push
 
-# Firebase references
+# Firebase References
 @docs Reference, open, key, toUrl, location
 
 # Priorities
@@ -56,20 +57,26 @@ valueChanged, childAdded, childChanged, childRemoved, childMoved
 @docs orderByChild, orderByValue, orderByKey, orderByPriority
 
 # Filtering
-@docs startAtValue, startAtKey, startAtPriority, endAtValue, endAtKey, endAtPriority
+@docs startAtValue, endAtValue, startAtKey, endAtKey, startAtPriority, endAtPriority
 
 # Limiting
 @docs limitToFirst, limitToLast
 
-# Snapshort processing
+# Snapshort Processing
 @docs toSnapshotList, toValueList, toKeyList, toPairList, export
 
 # Connection State and Offline Capabilities
-@doc goOffline, goOnline, subscribeConnected, subscribeServerTimeOffset
+@doc goOffline, goOnline, subscribeConnected,
+onDisconnectSet, onDisconnectSetWithPriority,
+onDisconnectUpdate, onDisconnectRemove, onDisconnectCancel
 
-# Error reporting
+# Server Time
+@doc serverTimeStamp, subscribeServerTimeOffset
+
+# Error Reporting
 @docs Error, ErrorType, AuthErrorType
 -}
+
 
 import Native.Firebase
 import Native.ElmFire
@@ -77,6 +84,7 @@ import Time exposing (Time)
 import Json.Encode as JE
 import Json.Decode as JD
 import Task exposing (Task)
+
 
 {-| Errors reported from Firebase or ElmFire -}
 type alias Error =
@@ -140,7 +148,7 @@ References are returned from many Firebase tasks as well as in query results.
 -}
 type Reference = Reference
 
-{- Each existing location in a Firebase may be attributed with a priority,
+{-| Each existing location in a Firebase may be attributed with a priority,
 which can be a number or a string.
 
 Priorities can be used for filtering and sorting entries in a query.
@@ -377,7 +385,7 @@ subscribe : (Snapshot -> Task x a)
 subscribe createResponseTask =
   subscribeConditional (Just << createResponseTask)
 
-{-| Query a Firebase location by subscription with optional reaction
+{- Query a Firebase location by subscription with optional reaction
 
 Similar to `subscribe` except that the function given as the first parameter
 can decide whether to run a task or not.
@@ -575,9 +583,13 @@ making it suitable for backing up your data.
 exportValue : Snapshot -> JE.Value
 exportValue = Native.ElmFire.exportValue
 
+{-| Manually disconnect the client from the server
+and disables automatic reconnection. -}
 goOffline : Task x ()
 goOffline = Native.ElmFire.setOffline True
 
+{-| Manually reestablish a connection to the server
+and enables automatic reconnection. -}
 goOnline  : Task x ()
 goOnline = Native.ElmFire.setOffline False
 
@@ -609,5 +621,7 @@ subscribeServerTimeOffset createResponseTask location =
     valueChanged
     (location |> root |> sub ".info/serverTimeOffset")
 
+{-| A placeholder value for auto-populating the current timestamp
+(time since the Unix epoch, in milliseconds) by the Firebase servers -}
 serverTimeStamp : JE.Value
 serverTimeStamp = Native.ElmFire.serverTimeStamp
