@@ -12,9 +12,9 @@ Nearly all features of the Firebase Web API are exposed in this library:
 - User management
 - Offline capabilities
 
-## Installation
+## Setup
 
-This package is not yet available from the official package catalog, so `elm-package` will not find it.
+This package is not yet available from the official package catalog, so `elm package` will not find it.
 In the meantime please clone the repo directly from github:
 
 ```sh
