@@ -280,72 +280,87 @@ Elm.Native.ElmFire.make = function (localRuntime) {
 
   function queryEventType (query) {
     var eventType = 'Bad query type.' + pleaseReportThis;
-    if (query.queryEvent) {
-      switch (query.queryEvent.ctor) {
-        case 'ValueChanged': eventType = 'value'; break;
-        case 'ChildAdded':   eventType = 'child_added'; break;
-        case 'ChildChanged': eventType = 'child_changed'; break;
-        case 'ChildRemoved': eventType = 'child_removed'; break;
-        case 'ChildMoved':   eventType = 'child_moved'; break;
-      }
+    switch (query.ctor) {
+      case 'ValueChanged': eventType = 'value'; break;
+      case 'ChildAdded':   eventType = 'child_added'; break;
+      case 'ChildChanged': eventType = 'child_changed'; break;
+      case 'ChildRemoved': eventType = 'child_removed'; break;
+      case 'ChildMoved':   eventType = 'child_moved'; break;
     }
     return eventType;
   }
 
+  function queryOrderPoint (isPrio, filterFn, endPoint, ref) {
+    if (isPrio) {
+      var prio = priority2fb (endPoint._0);
+      var key  = fromMaybe (endPoint._1);
+      if (key === null) {
+        ref = filterFn.call (ref, prio);
+      } else {
+        ref = filterFn.call (ref, prio, key);
+      }
+    } else {
+      ref = filterFn.call (ref, endPoint);
+    }
+    return ref;
+  }
+
   function queryOrderAndFilter (query, ref) {
-    if (query.orderByChildOrValue) {
-      if (query.orderByChildOrValue.ctor === 'Just') {
-        ref = ref.orderByChild (query.orderByChildOrValue._0);
-      } else {
-        ref = ref.orderByValue ();
+    if (query._0) {
+      var orderOptions = query._0;
+      var rangeOptions = null;
+      switch (orderOptions.ctor) {
+        case 'NoOrder':
+          break;
+        case 'OrderByChild':
+          ref = ref.orderByChild (orderOptions._0);
+          rangeOptions = orderOptions._1;
+          break;
+        case 'OrderByValue':
+          ref = ref.orderByValue ();
+          rangeOptions = orderOptions._0;
+          break;
+        case 'OrderByKey':
+          ref = ref.orderByKey ();
+          rangeOptions = orderOptions._0;
+          break;
+        case 'OrderByPriority':
+          ref = ref.orderByPriority ();
+          rangeOptions = orderOptions._0;
+          break;
+        default: throw ('Bad query order option.' + pleaseReportThis);
+      }
+      if (rangeOptions) {
+        var isPrio = orderOptions.ctor === 'OrderByPriority';
+        switch (rangeOptions.ctor) {
+          case 'NoRange':
+            break;
+          case 'StartAt':
+            ref = queryOrderPoint (isPrio, ref.startAt, rangeOptions._0, ref);
+            break;
+          case 'EndAt':
+            ref = queryOrderPoint (isPrio, ref.endAt,   rangeOptions._0, ref);
+            break;
+          case 'Range':
+            ref = queryOrderPoint (isPrio, ref.startAt, rangeOptions._0, ref);
+            ref = queryOrderPoint (isPrio, ref.endAt,   rangeOptions._1, ref);
+            break;
+          case 'EqualTo':
+            ref = queryOrderPoint (isPrio, ref.equalTo, rangeOptions._0, ref);
+            break;
+          default: throw ('Bad query range option.' + pleaseReportThis);
+        }
       }
     }
-    if (query.orderByKey) {
-      ref = ref.orderByKey ();
-    }
-    if (query.orderByPriority) {
-      ref = ref.orderByPriority ();
-    }
-
-    if (query.startAtValue) {
-      ref = ref.startAt  (query.startAtValue);
-    }
-    if (query.endAtValue) {
-      ref = ref.endAt  (query.endAtValue);
-    }
-    if (query.startAtKey) {
-      ref = ref.startAt  (query.startAtKey);
-    }
-    if (query.endAtKey) {
-      ref = ref.endAt  (query.endAtKey);
-    }
-    var prio, key;
-    if (query.startAtPriority) {
-      prio = priority2fb (query.startAtPriority._0);
-      key  = fromMaybe (query.startAtPriority._1);
-      if (key === null) {
-        ref = ref.startAt (prio);
-      } else {
-        ref = ref.startAt (prio, key);
+    if (query._1) {
+      var limitOptions = query._1;
+      switch (limitOptions.ctor) {
+        case 'NoLimit': break;
+        case 'LimitToFirst': ref = ref.limitToFirst (limitOptions._0); break;
+        case 'LimitToLast':  ref = ref.limitToLast  (limitOptions._0); break;
+        default: throw ('Bad query limit option.' + pleaseReportThis);
       }
     }
-    if (query.endAtPriority) {
-      prio = priority2fb (query.endAtPriority._0);
-      key  = fromMaybe (query.endAtPriority._1);
-      if (key === null) {
-        ref = ref.endAt (prio);
-      } else {
-        ref = ref.endAt (prio, key);
-      }
-    }
-
-    if (query.limitToFirst) {
-      ref = ref.limitToFirst (query.limitToFirst);
-    }
-    if (query.limitToLast) {
-      ref = ref.limitToLast (query.limitToLast);
-    }
-
     return ref;
   }
 

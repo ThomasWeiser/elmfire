@@ -12,7 +12,7 @@ import Task exposing (Task)
 import Json.Encode as JE exposing (string, encode)
 
 import ElmFire exposing
-  ( fromUrl, set, subscribe, valueChanged
+  ( fromUrl, set, subscribe, valueChanged, noOrder, noLimit
   , Reference, Snapshot, Subscription, Error
   )
 
@@ -38,7 +38,7 @@ port runQuery =
     subscribe
         (Signal.send values.address << .value)
         doNothing
-        valueChanged
+        (valueChanged noOrder noLimit)
         (fromUrl url)
 
 view : JE.Value -> Html

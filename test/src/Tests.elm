@@ -96,7 +96,7 @@ test1 =
   |>> meets "set returned same ref" (\refReturned -> toUrl refReturned == toUrl ref)
   |>> map location
   |>+ \loc
-   -> test  "once valueChanged (at child)" (once valueChanged loc)
+   -> test  "once valueChanged (at child)" (once (valueChanged noOrder noLimit) loc)
   |>> printResult
   |>> meets "once returned same key" (\snapshot -> snapshot.key == key ref)
 
@@ -105,7 +105,7 @@ test1 =
   |>> printResult
   |>> succeeds
   |>- test  "onDisconnectSet has not written yet"
-            (once valueChanged (loc |> parent |> sub "onlineState"))
+            (once (valueChanged noOrder noLimit) (loc |> parent |> sub "onlineState"))
   |>> meets "value is not existing"
             (\snapshot -> not snapshot.existing)
   |>> meets "value is null"
@@ -117,7 +117,7 @@ test1 =
   |>> succeeds
 
   |>- test  "onDisconnectSet has now written the value"
-            (once valueChanged (loc |> parent |> sub "onlineState"))
+            (once (valueChanged noOrder noLimit) (loc |> parent |> sub "onlineState"))
   |>> meets "value is written"
             (\snapshot -> snapshot.value == JE.string "disconnected")
 
@@ -201,7 +201,7 @@ test1 =
 
   -- Test reading and writing (except complex queries) ------------------------
 
-  |>- test  "once valueChanged (at child)" (once valueChanged loc)
+  |>- test  "once valueChanged (at child)" (once (valueChanged noOrder noLimit) loc)
   |>> printResult
   |>> meets "once returned same key" (\snapshot -> snapshot.key == key ref)
   |>> meets "once returned right value" (\snapshot -> snapshot.value == JE.string "Hello")
@@ -219,7 +219,7 @@ test1 =
             ( subscribe
                 (Data >> reporter1)
                 (Canceled >> reporter1)
-                childAdded
+                (childAdded noOrder noLimit)
                 (parent loc)
             )
   |>> succeeds
@@ -240,7 +240,8 @@ test1 =
                 committed && snapshot.value == JE.string "Elmers!"
             )
 
-  |>- test  "once valueChanged at non-existing location" (once valueChanged (sub "_non_existing_key_" loc))
+  |>- test  "once valueChanged at non-existing location"
+            (once (valueChanged noOrder noLimit) (sub "_non_existing_key_" loc))
   |>> meets "returns non-existing" (\snapshot -> not snapshot.existing)
 
   |>- test  "set without permission"
@@ -251,7 +252,7 @@ test1 =
   |>- clear
 
   |>- test  "once without permission"
-            ( once valueChanged (fromUrl url |> sub "unaccessible") )
+            ( once (valueChanged noOrder noLimit) (fromUrl url |> sub "unaccessible") )
   |>> printResult
   |>> fails
   |>> errorMeets "reports PermissionError" isPermissionError
@@ -260,8 +261,12 @@ test1 =
   |>- createReporter "subscription without permission results"
   |>+ \reporter2
    -> test  "subscribe without permission"
-            ( subscribe (Data >> reporter2) (Canceled >> reporter2)
-                        valueChanged (fromUrl url |> sub "unaccessible") )
+            ( subscribe
+                (Data >> reporter2)
+                (Canceled >> reporter2)
+                (valueChanged noOrder noLimit)
+                (fromUrl url |> sub "unaccessible")
+            )
   |>> printResult
   |>- clear
 
@@ -283,7 +288,7 @@ test1 =
   |>- test  "subscribe with invalid URL"
             ( subscribe
               (always Task.succeed ()) (always Task.succeed ())
-              valueChanged (fromUrl "not-a-url")
+              (valueChanged noOrder noLimit) (fromUrl "not-a-url")
             )
   |>> printResult
   |>> fails
@@ -298,17 +303,17 @@ test1 =
 
   -- Test complex queries, using the dino example data from Firebase docs -----
 
-  |>- test  "dino test data" (once valueChanged dino)
+  |>- test  "dino test data" (once (valueChanged noOrder noLimit) dino)
   |>> map (.value >> JE.encode 2)
   |>> printString
 
-  |>- test  "toSnapshotList" (once valueChanged (dino |> sub "scores"))
+  |>- test  "toSnapshotList" (once (valueChanged noOrder noLimit) (dino |> sub "scores"))
   |>> map toSnapshotList
   |>> printResult
 
   |>- test  "dinos, ordered by child 'height', limited to last 2"
             ( once
-                (valueChanged |> orderByChild "height" |> limitToLast 2)
+                (valueChanged (orderByChild "height" noRange) (limitToLast 2))
                 (dino |> sub "dinosaurs")
             )
   |>> map (toValueList >> JE.list >> JE.encode 2)
@@ -320,14 +325,14 @@ test1 =
             ( subscribe
                 (Data >> reporterDino)
                 (Canceled >> reporterDino)
-                (childAdded |> orderByValue |> limitToFirst 3)
+                (childAdded (orderByValue noRange) (limitToFirst 3))
                 (dino |> sub "scores")
             )
   |>> printResult
 
   |>- test  "dinos, ordered by key, limited to first 2"
             ( once
-                (valueChanged |> orderByKey |> limitToFirst 2)
+                (valueChanged (orderByKey noRange) (limitToFirst 2))
                 (dino |> sub "dinosaurs")
             )
   |>> map (toKeyList >> String.join " ")
@@ -335,22 +340,24 @@ test1 =
 
   |>- test  "dinos, limited to first 2"
             ( once
-                (valueChanged |> limitToFirst 2)
+                (valueChanged noOrder (limitToFirst 2))
                 (dino |> sub "dinosaurs")
             )
   |>> map (toKeyList >> String.join " ")
   |>> printString
 
   |>- test  "order by priority"
-            ( once (valueChanged |> orderByPriority) (parent loc)
+            ( once (valueChanged (orderByPriority noRange) noLimit) (parent loc)
             )
   |>> map (toSnapshotList >> List.map .priority)
   |>> printResult
 
   |>- test  "order by priority, start at priority number 10"
             ( once
-                (valueChanged |> orderByPriority
-                              |> startAtPriority (NumberPriority 10) Nothing)
+                (valueChanged
+                  (orderByPriority (startAt (NumberPriority 10, Nothing)))
+                  noLimit
+                )
                 (parent loc)
             )
   |>> map (toSnapshotList >> List.map .priority)
@@ -358,8 +365,10 @@ test1 =
 
   |>- test  "order by priority, end at priority number 10"
             ( once
-                (valueChanged |> orderByPriority
-                              |> endAtPriority (NumberPriority 10) Nothing)
+                (valueChanged
+                  (orderByPriority (endAt (NumberPriority 10, Nothing)))
+                  noLimit
+                )
                 (parent loc)
             )
   |>> map (toSnapshotList >> List.map .priority)
@@ -367,8 +376,10 @@ test1 =
 
   |>- test  "order by child 'height', start at value 3, end at value 10"
             ( once
-                (valueChanged |> orderByChild "height"
-                              |> startAtValue (JE.int 3) |> endAtValue (JE.int 10))
+                (valueChanged
+                  (orderByChild "height" (range (JE.int 3) (JE.int 10)))
+                  noLimit
+                )
                 (dino |> sub "dinosaurs")
             )
   |>> map (toPairList >> JE.object >> JE.encode 2)
@@ -376,7 +387,10 @@ test1 =
 
   |>- test  "dinos, ordered by key, starting with letter 'l'"
             ( once
-                (valueChanged |> orderByKey |> startAtKey "l" |> endAtKey "l~")
+                (valueChanged
+                  (orderByKey (range "l" "l~"))
+                  noLimit
+                )
                 (dino |> sub "dinosaurs")
             )
   |>> map (toKeyList >> String.join " ")
@@ -384,7 +398,10 @@ test1 =
 
   |>- test  "dinos, ordered by prioriy, start at NoPriority and key 's'"
             ( once
-                (valueChanged |> orderByPriority |> startAtPriority NoPriority (Just "s"))
+                (valueChanged
+                  (orderByPriority (startAt (NoPriority, (Just "s"))))
+                  noLimit
+                )
                 (dino |> sub "dinosaurs")
             )
   |>> map (toKeyList >> String.join " ")

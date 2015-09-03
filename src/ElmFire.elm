@@ -8,14 +8,14 @@ module ElmFire
   , Snapshot
   , Action (..)
   , transaction
-  , Query
+  , Query, OrderOptions, RangeOptions, LimitOptions
   , Subscription
   , Cancellation (..)
   , subscribe, unsubscribe, once
   , valueChanged, childAdded, childChanged, childRemoved, childMoved
-  , orderByChild, orderByValue, orderByKey, orderByPriority
-  , startAtValue, endAtValue, startAtKey, endAtKey, startAtPriority, endAtPriority
-  , limitToFirst, limitToLast
+  , noOrder, orderByChild, orderByValue, orderByKey, orderByPriority
+  , noRange, startAt, endAt, range, equalTo
+  , noLimit, limitToFirst, limitToLast
   , toSnapshotList, toValueList, toKeyList,toPairList
   , exportValue
   , goOffline, goOnline
@@ -48,18 +48,18 @@ module ElmFire
 @docs Action, transaction
 
 # Querying
-@docs Query, Subscription, Cancellation,
+@docs Query, OrderOptions, RangeOptions, LimitOptions, Subscription, Cancellation,
   subscribe, unsubscribe, once,
   valueChanged, childAdded, childChanged, childRemoved, childMoved
 
 # Ordering
-@docs orderByChild, orderByValue, orderByKey, orderByPriority
+@docs noOrder, orderByChild, orderByValue, orderByKey, orderByPriority
 
 # Filtering
-@docs startAtValue, endAtValue, startAtKey, endAtKey, startAtPriority, endAtPriority
+@docs noRange, startAt, endAt, range, equalTo
 
 # Limiting
-@docs limitToFirst, limitToLast
+@docs noLimit, limitToFirst, limitToLast
 
 # Snapshot Processing
 @docs toSnapshotList, toValueList, toKeyList, toPairList, exportValue
@@ -378,7 +378,7 @@ The fourth parameter specifies the location to be queried.
 -}
 subscribe : (Snapshot -> Task x a)
          -> (Cancellation -> Task y b)
-         -> Query q
+         -> Query
          -> Location
          -> Task Error Subscription
 subscribe createResponseTask =
@@ -391,7 +391,7 @@ can decide whether to run a task or not.
 -}
 subscribeConditional : (Snapshot -> Maybe (Task x a))
          -> (Cancellation -> Task y b)
-         -> Query q
+         -> Query
          -> Location
          -> Task Error Subscription
 subscribeConditional = Native.ElmFire.subscribeConditional
@@ -412,160 +412,118 @@ Additionally, this parameter can also specify ordering, filtering and limiting o
 
 The second parameter specifies the location to be queried.
 -}
-once : Query q -> Location -> Task Error Snapshot
+once : Query -> Location -> Task Error Snapshot
 once = Native.ElmFire.once
 
-{-| A query specification: event type, ordering, filtering, limiting
+{-| A query specification: event type, ordering, filtering, limiting -}
+type Query
+  = ValueChanged OrderOptions LimitOptions
+  | ChildAdded OrderOptions LimitOptions
+  | ChildChanged OrderOptions LimitOptions
+  | ChildRemoved OrderOptions LimitOptions
+  | ChildMoved OrderOptions LimitOptions
 
-The type parameter `q` facilitates compile-time checks for valid combinations of the specification parts.
-It has no further meaning for the API user.
--}
-type alias Query q = { q | tag : QueryOptions }
+{-| Build a query with event type "value changed" -}
+valueChanged : OrderOptions -> LimitOptions -> Query
+valueChanged = ValueChanged
 
-type QueryOptions = QueryOptions
-emptyOptions =
-  { tag = QueryOptions, noOrder = True, noLimit = True, noStart = True, noEnd = True }
+{-| Build a query with event type "child added" -}
+childAdded : OrderOptions -> LimitOptions -> Query
+childAdded   = ChildAdded
 
-type QueryEvent =
-  ValueChanged | ChildAdded | ChildChanged | ChildRemoved | ChildMoved
+{-| Build a query with event type "child changed" -}
+childChanged : OrderOptions -> LimitOptions -> Query
+childChanged = ChildChanged
 
-type alias SimpleQuery =
-  { tag : QueryOptions
-  , queryEvent : QueryEvent
-  , noOrder : Bool
-  , noLimit : Bool
-  , noStart : Bool
-  , noEnd : Bool
-  }
+{-| Build a query with event type "child removed" -}
+childRemoved : OrderOptions -> LimitOptions -> Query
+childRemoved = ChildRemoved
 
-{-| Query value changes at the referenced location -}
-valueChanged : SimpleQuery
-valueChanged = { emptyOptions | queryEvent = ValueChanged }
+{-| Build a query with event type "child moved" -}
+childMoved : OrderOptions -> LimitOptions -> Query
+childMoved   = ChildMoved
 
-{-| Query child added -}
-childAdded : SimpleQuery
-childAdded   = { emptyOptions | queryEvent = ChildAdded }
+{-| Type to specify ordering and options of queries -}
+type OrderOptions
+ = NoOrder
+ | OrderByChild String (RangeOptions JE.Value)
+ | OrderByValue (RangeOptions JE.Value)
+ | OrderByKey (RangeOptions String)
+ | OrderByPriority (RangeOptions (Priority, Maybe String))
 
-{-| Query child changed -}
-childChanged : SimpleQuery
-childChanged = { emptyOptions | queryEvent = ChildChanged }
+{-| Type to specify filtering options for the use within a `OrderOption` -}
+type RangeOptions t
+ = NoRange
+ | StartAt t
+ | EndAt t
+ | Range t t
+ | EqualTo t
 
-{-| Query child removed -}
-childRemoved : SimpleQuery
-childRemoved = { emptyOptions | queryEvent = ChildRemoved }
+{-| Type to specify limiting the size of the query result set -}
+type LimitOptions
+ = NoLimit
+ | LimitToFirst Int
+ | LimitToLast Int
 
-{-| Query child moved -}
-childMoved : SimpleQuery
-childMoved   = { emptyOptions | queryEvent = ChildMoved }
+{-| Don't order results -}
+noOrder : OrderOptions
+noOrder = NoOrder
 
-{-| Order query results by the value of a named child -}
-orderByChild : String
-  -> { r | noOrder : a }
-  -> { r | orderByChildOrValue : Maybe String }
-orderByChild key query = { query - noOrder | orderByChildOrValue = Just key }
+{-| Order results by the value of a given child -}
+orderByChild : String -> RangeOptions JE.Value -> OrderOptions
+orderByChild = OrderByChild
 
-{-| Order query results by value -}
-orderByValue :
-     { r | noOrder : a }
-  -> { r | orderByChildOrValue : Maybe String }
-orderByValue query = { query - noOrder | orderByChildOrValue = Nothing }
+{-| Order results by value -}
+orderByValue : RangeOptions JE.Value -> OrderOptions
+orderByValue = OrderByValue
 
-{-| Order query results by key -}
-orderByKey :
-     { r | noOrder : a }
-  -> { r | orderByKey : Bool }
-orderByKey query = { query - noOrder | orderByKey = True }
+{-| Order results by key -}
+orderByKey : RangeOptions String -> OrderOptions
+orderByKey = OrderByKey
 
-{-| Order query results first by priority, then by key -}
-orderByPriority :
-     { r | noOrder : a }
-  -> { r | orderByPriority : Bool }
-orderByPriority query = { query - noOrder | orderByPriority = True }
+{-| Order results by priority (and maybe secondary by key) -}
+orderByPriority : RangeOptions (Priority, Maybe String) -> OrderOptions
+orderByPriority = OrderByPriority
 
-{-| Filter query results by a given start value
+{-| Don't filter the ordered results -}
+noRange : RangeOptions t
+noRange = NoRange
 
-The value has to be atomar (number, string, boolean or null).
+{-| Filter the ordered results to start at a given value.
 
-This is only valid after sorting by value or by child.
--}
-startAtValue : JE.Value
-  -> { r | noStart : a, orderByChildOrValue : o }
-  -> { r | orderByChildOrValue : o, startAtValue: JE.Value }
-startAtValue value query =
-  { query - noStart | startAtValue = value }
+The type of the value depends on the order criterium -}
+startAt : t -> RangeOptions t
+startAt = StartAt
 
-{-| Filter query results by a given end value
+{-| Filter the ordered results to end at a given value.
 
-The value has to be atomar (number, string, boolean or null).
+The type of the value depends on the order criterium -}
+endAt : t -> RangeOptions t
+endAt = EndAt
 
-This is only valid after sorting by value or by child.
--}
-endAtValue : JE.Value
-  -> { r | noEnd : a, orderByChildOrValue : o }
-  -> { r | orderByChildOrValue : o, endAtValue: JE.Value }
-endAtValue value query =
-  { query - noEnd | endAtValue = value }
+{-| Filter the ordered results to start at a given value and to end at another value.
 
-{-| Filter query results by a given start key
+The type of the value depends on the order criterium -}
+range : t -> t -> RangeOptions t
+range = Range
 
-This is only valid after sorting by key.
--}
-startAtKey : String
-  -> { r | noStart : a, orderByKey : o }
-  -> { r | orderByKey : o, startAtKey: String }
-startAtKey key query =
-  { query - noStart | startAtKey = key }
+{-| Filter the ordered results to equal a given value.
 
-{-| Filter query results by a given end key
+The type of the value depends on the order criterium -}
+equalTo : t -> RangeOptions t
+equalTo = EqualTo
 
-This is only valid after sorting by key.
--}
-endAtKey : String
-  -> { r | noEnd : a, orderByKey : o }
-  -> { r | orderByKey : o, endAtKey: String }
-endAtKey key query =
-  { query - noEnd | endAtKey = key }
+{-| Don't limit the size of the query result set -}
+noLimit : LimitOptions
+noLimit = NoLimit
 
-{-| Filter query results by a given start priority (and key if given)
+{-| Limit the query result set to the first n items -}
+limitToFirst : Int -> LimitOptions
+limitToFirst = LimitToFirst
 
-This is only valid after sorting by priority.
--}
-startAtPriority : Priority -> Maybe String
-  -> { r | noStart : a, orderByPriority : o }
-  -> { r | orderByPriority : o, startAtPriority: (Priority, Maybe String) }
-startAtPriority priority key query =
-  { query - noStart | startAtPriority = (priority, key) }
-
-{-| Filter query results by a given end priority (and key if given)
-
-This is only valid after sorting by priority.
--}
-endAtPriority : Priority -> Maybe String
-  -> { r | noEnd : a, orderByPriority : o }
-  -> { r | orderByPriority : o, endAtPriority: (Priority, Maybe String) }
-endAtPriority priority key query =
-  { query - noEnd | endAtPriority = (priority, key) }
-
-{-| Limit the query to the first certain number of children.
-
-The number must be a positive integer.
-When combined with ordering and filtering, limiting is done after that steps.
--}
-limitToFirst : Int
-  -> { r | noLimit : a }
-  -> { r | limitToFirst : Int }
-limitToFirst num query = { query - noLimit | limitToFirst = num }
-
-{-| Limit the query to the last certain number of children.
-
-The number must be a positive integer.
-When combined with ordering and filtering, limiting is done after that steps.
--}
-limitToLast : Int
-  -> { r | noLimit : a }
-  -> { r | limitToLast : Int }
-limitToLast num query = { query - noLimit | limitToLast = num }
-
+{-| Limit the query result set to the last n items -}
+limitToLast : Int -> LimitOptions
+limitToLast = LimitToLast
 
 {-| Convert a snapshot's children into a list of snapshots
 
@@ -617,7 +575,7 @@ subscribeConnected createResponseTask location =
         Err _    -> Nothing
     )
     (always (Task.succeed ()))
-    valueChanged
+    (valueChanged noOrder noLimit)
     (location |> root |> sub ".info/connected")
 
 {-| Subscribe to server time offset -}
@@ -631,7 +589,7 @@ subscribeServerTimeOffset createResponseTask location =
         Err _     -> Nothing
     )
     (always (Task.succeed ()))
-    valueChanged
+    (valueChanged noOrder noLimit)
     (location |> root |> sub ".info/serverTimeOffset")
 
 {-| A placeholder value for auto-populating the current timestamp

@@ -39,17 +39,24 @@ Then you can import the module in your Elm code, e.g.:
 
 ```elm
 import ElmFire exposing (..)
-import ElmFire.Auth as Auth -- if you need the authentication
+import ElmFire.Auth as Auth -- if you need the authentication functions
 ```
 
-See also this minimal working [example](#exampleelm).
+See also this minimal working [example](#examples).
 
 ## API Usage
 
+The API design corresponds closely to the targeted Firebase JavaScript API.
+Please refer to the [original documentation](https://www.firebase.com/docs/web/)
+for further discussions of the concepts.
+
+In the following we give a short overview of the API.
+Detailed documentation is embedded in the source code. 
+
 ### Constructing Firebase Locations
 
-To refer to a Firebase path you need a `Location`.
-Locations can be built with the following functions:
+To refer to a Firebase path use a `Location`.
+It can be built with the following functions:
 
 ```elm
 -- Location is an opaque type.
@@ -86,7 +93,7 @@ And a reference may be converted back to a location, which can be used in a new 
 There is a special task to open a location without modifying or querying it,
 which results in a reference if the location is valid.
 It's generally not necessary to explicitly open a constructed location,
-but it may be used to check the location or to cache Firebase references.
+but it may be used to check the validity of a location or to cache Firebase references.
 
 ```elm
 -- Reference is an opaque type
@@ -108,7 +115,7 @@ remove          : Location -> Task Error Reference
 
 These tasks complete when synchronization to the Firebase servers has completed.
 On success they result in a Reference to the modified location.
-They result in an error if the location is invalid or you have no permission to modify the data.
+They result in an error if the location is invalid or if you have no permission to modify the data.
 
 Values are given as Json values, i.e. `Json.Encode.Value`.
 
@@ -124,7 +131,7 @@ port write =
     
 ### Transactions
 
-Atomic modifications of the data at a location can be done by transactions.
+Atomic modifications of the data at a location can be achieved by transactions.
 
 A transaction takes an update function that maps the previous value to a new value.
 In case of a conflict with concurrent updates by other clients
@@ -159,26 +166,29 @@ port trans =
 ### Querying
 
 ```elm
-once        : Query q -> Location -> Task Error Snapshot       
+once        : Query -> Location -> Task Error Snapshot       
 subscribe   : (Snapshot -> Task x a) ->
               (Cancellation -> Task y b) ->
-              Query q ->
+              Query ->
               Location ->
               Task Error Subscription
 unsubscribe : Subscription -> Task Error ()
 ```
     
 Use `once` to listen to exactly one event of the given type.
+
 The first parameter specifies the event to listen to: `valueChanged`, `childAdded`, `childChanged`, `childRemoved` or `childMoved`.
-Additionally, this parameter can also specify ordering, filtering and limiting of the query (see below).
+Additionally, this parameter also specifies ordering, filtering and limiting of the query (see below).
+If you don't need these options a simple query specification is `valueChanged noOrder noLimit`.
 
 The second parameter references the queried location.
 
-Use `subscribe` to start querying the specified events.
+Use `subscribe` to start a continuing query of the specified events.
 Subscription queries return a arbitrary number of data messages,
 which are reported via running a supplied task.
 
 The first parameter of `subscribe` is a function used to construct that task from a data message.
+
 The second parameter is a function used to construct a task that is run when the query gets canceled.
 
 The third and fourth parameter of `subscribe` are the same as the first two of `once`.
@@ -200,7 +210,8 @@ type Cancellation
   | QueryError Subscription Error
 ```
 
-A `Snapshot` carries the corresponding `Subscription` and a `Value` for the Json value.
+A `Snapshot` carries the resulting `Value` (as Json) among other information,
+e.g. the corresponding `Subscription` identifier.
 
 In queries of type `valueChanged` the result may be that there is no value at the queried location.
 In this case `existing` will be `False` and value will be the Json value of `null`.
@@ -220,7 +231,7 @@ port query =
   subscribe
     (Signal.send responses.address << Just)
     (always (Task.succeed ()))
-    (child added)
+    (childAdded noOrder noLimit)
     (fromUrl "https:...firebaseio.com/...")
 
 ... = Signal.map
@@ -234,24 +245,25 @@ port query =
 ### Ordering, Filtering and Limiting Queries
 
 Query results can be ordered (by value, by a child's value, by key or by priority),
-filtered by giving a start and/or end value,
+filtered by giving a start and/or end value within that order,
 and limited to the first or last certain number of children.
             
 Example queries to be used in `once` and `subscribe`:
-            
+
 ```elm
-childAdded |> limitToFirst 2
-childAdded |> orderByValue
-childAdded |> orderByChild "size"
-childAdded |> orderByKey
-childAdded |> orderByPriority
-childAdded |> orderByValue |> startAtValue "foo"
-childAdded |> orderByValue |> startAtValue "foo" | limitToLast 10
-childAdded |> orderByChild "size" |> startAtValue 42 |> endAtValue 42
-childAdded |> orderByKey |> endAtKey "d"
-childAdded |> orderByPriority |> startAtPriority (NumberPriority 17) (Just "d")
+childAdded noOrder noLimit
+childAdded noOrder (limitToFirst 2)
+childAdded (orderByValue noRange) noLimit
+childAdded (orderByChild "size" noRange) noLimit
+childAdded (orderByKey noRange) noLimit
+childAdded (orderByPriority noRange) noLimit
+childAdded (orderByValue (startAt (Json.Encode.string "foo"))) noLimit
+childAdded (orderByValue (startAt (Json.Encode.string "foo"))) (limitToLast 10)
+childAdded (orderByChild "size" (equalTo (Json.Encode.int 42))) noLimit
+childAdded (orderByKey (endAt "k")) noLimit
+childAdded (orderByPriority (startAt (NumberPriority 17, Just "k"))) noLimit
 ```
-    
+
 When doing ordered `valuedChanged` queries it may be useful to map the result
 to a list to conserve the ordering:
 
