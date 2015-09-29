@@ -178,8 +178,8 @@ unsubscribe : Subscription -> Task Error ()
 Use `once` to listen to exactly one event of the given type.
 
 The first parameter specifies the event to listen to: `valueChanged`, `childAdded`, `childChanged`, `childRemoved` or `childMoved`.
-Additionally, this parameter also specifies ordering, filtering and limiting of the query (see below).
-If you don't need these options a simple query specification is `valueChanged noOrder noLimit`.
+Additionally, this parameter may also specify ordering, filtering and limiting of the query (see below).
+If you don't need these options a simple query specification is `valueChanged noOrder`.
 
 The second parameter references the queried location.
 
@@ -245,23 +245,22 @@ port query =
 ### Ordering, Filtering and Limiting Queries
 
 Query results can be ordered (by value, by a child's value, by key or by priority),
-filtered by giving a start and/or end value within that order,
+and then filtered by giving a start and/or end value within that order,
 and limited to the first or last certain number of children.
             
 Example queries to be used in `once` and `subscribe`:
 
 ```elm
-childAdded noOrder noLimit
-childAdded noOrder (limitToFirst 2)
-childAdded (orderByValue noRange) noLimit
-childAdded (orderByChild "size" noRange) noLimit
-childAdded (orderByKey noRange) noLimit
-childAdded (orderByPriority noRange) noLimit
-childAdded (orderByValue (startAt (Json.Encode.string "foo"))) noLimit
-childAdded (orderByValue (startAt (Json.Encode.string "foo"))) (limitToLast 10)
-childAdded (orderByChild "size" (equalTo (Json.Encode.int 42))) noLimit
-childAdded (orderByKey (endAt "k")) noLimit
-childAdded (orderByPriority (startAt (NumberPriority 17, Just "k"))) noLimit
+childAdded noOrder
+childAdded (orderByValue noRange noLimit)
+childAdded (orderByChild "size" noRange noLimit)
+childAdded (orderByKey noRange noLimit)
+childAdded (orderByPriority noRange (limitToFirst 2))
+childAdded (orderByValue (startAt (Json.Encode.string "foo")) noLimit)
+childAdded (orderByValue (startAt (Json.Encode.string "foo")) (limitToLast 10))
+childAdded (orderByChild "size" (equalTo (Json.Encode.int 42)) noLimit)
+childAdded (orderByKey (endAt "k") noLimit)
+childAdded (orderByPriority (startAt (NumberPriority 17, Just "k")) noLimit)
 ```
 
 When doing ordered `valuedChanged` queries it may be useful to map the result

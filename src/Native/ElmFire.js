@@ -309,24 +309,29 @@ Elm.Native.ElmFire.make = function (localRuntime) {
     if (query._0) {
       var orderOptions = query._0;
       var rangeOptions = null;
+      var limitOptions = null;
       switch (orderOptions.ctor) {
         case 'NoOrder':
           break;
         case 'OrderByChild':
           ref = ref.orderByChild (orderOptions._0);
           rangeOptions = orderOptions._1;
+          limitOptions = orderOptions._2;
           break;
         case 'OrderByValue':
           ref = ref.orderByValue ();
           rangeOptions = orderOptions._0;
+          limitOptions = orderOptions._1;
           break;
         case 'OrderByKey':
           ref = ref.orderByKey ();
           rangeOptions = orderOptions._0;
+          limitOptions = orderOptions._1;
           break;
         case 'OrderByPriority':
           ref = ref.orderByPriority ();
           rangeOptions = orderOptions._0;
+          limitOptions = orderOptions._1;
           break;
         default: throw ('Bad query order option.' + pleaseReportThis);
       }
@@ -351,14 +356,13 @@ Elm.Native.ElmFire.make = function (localRuntime) {
           default: throw ('Bad query range option.' + pleaseReportThis);
         }
       }
-    }
-    if (query._1) {
-      var limitOptions = query._1;
-      switch (limitOptions.ctor) {
-        case 'NoLimit': break;
-        case 'LimitToFirst': ref = ref.limitToFirst (limitOptions._0); break;
-        case 'LimitToLast':  ref = ref.limitToLast  (limitOptions._0); break;
-        default: throw ('Bad query limit option.' + pleaseReportThis);
+      if (limitOptions) {
+        switch (limitOptions.ctor) {
+          case 'NoLimit': break;
+          case 'LimitToFirst': ref = ref.limitToFirst (limitOptions._0); break;
+          case 'LimitToLast':  ref = ref.limitToLast  (limitOptions._0); break;
+          default: throw ('Bad query limit option.' + pleaseReportThis);
+        }
       }
     }
     return ref;

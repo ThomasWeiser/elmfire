@@ -29,6 +29,8 @@ module ElmFire
 
 {-| Elm Bindings to Firebase.
 
+ElmFire maps the Firebase JavaScript API to Elm functions and tasks.
+
 # Firebase Locations
 @docs Location, fromUrl, sub, parent, root, push
 
@@ -372,7 +374,7 @@ when the query gets canceled.
 
 The third parameter specifies the event to listen to:
 `valueChanged`, `childAdded`, `childChanged`, `childRemoved` or `childMoved`.
-Additionally, this parameter can also specify ordering, filtering and limiting of the query (see below).
+Additionally, this parameter may also specify ordering, filtering and limiting of the query (see below).
 
 The fourth parameter specifies the location to be queried.
 -}
@@ -400,7 +402,7 @@ subscribeConditional = Native.ElmFire.subscribeConditional
 unsubscribe : Subscription -> Task Error ()
 unsubscribe = Native.ElmFire.unsubscribe
 
-{-| Query a Firebase location once
+{-| Query a Firebase location for exactly one event of the specified type
 
 On success the tasks results in the desired Snapshot.
 It results in an error if either the location is invalid
@@ -410,48 +412,52 @@ The third parameter specifies the event to listen to:
 `valueChanged`, `childAdded`, `childChanged`, `childRemoved` or `childMoved`.
 Additionally, this parameter can also specify ordering, filtering and limiting of the query (see below).
 
+The first parameter specifies the event to listen to:
+`valueChanged`, `childAdded`, `childChanged`, `childRemoved` or `childMoved`.
+Additionally, this parameter may also specify ordering, filtering and limiting of the query (see below).
+
 The second parameter specifies the location to be queried.
 -}
 once : Query -> Location -> Task Error Snapshot
 once = Native.ElmFire.once
 
-{-| A query specification: event type, ordering, filtering, limiting -}
+{-| A query specification: event type, possibly ordering with filtering and limiting -}
 type Query
-  = ValueChanged OrderOptions LimitOptions
-  | ChildAdded OrderOptions LimitOptions
-  | ChildChanged OrderOptions LimitOptions
-  | ChildRemoved OrderOptions LimitOptions
-  | ChildMoved OrderOptions LimitOptions
+  = ValueChanged OrderOptions
+  | ChildAdded OrderOptions
+  | ChildChanged OrderOptions
+  | ChildRemoved OrderOptions
+  | ChildMoved OrderOptions
 
 {-| Build a query with event type "value changed" -}
-valueChanged : OrderOptions -> LimitOptions -> Query
+valueChanged : OrderOptions -> Query
 valueChanged = ValueChanged
 
 {-| Build a query with event type "child added" -}
-childAdded : OrderOptions -> LimitOptions -> Query
+childAdded : OrderOptions -> Query
 childAdded   = ChildAdded
 
 {-| Build a query with event type "child changed" -}
-childChanged : OrderOptions -> LimitOptions -> Query
+childChanged : OrderOptions -> Query
 childChanged = ChildChanged
 
 {-| Build a query with event type "child removed" -}
-childRemoved : OrderOptions -> LimitOptions -> Query
+childRemoved : OrderOptions -> Query
 childRemoved = ChildRemoved
 
 {-| Build a query with event type "child moved" -}
-childMoved : OrderOptions -> LimitOptions -> Query
+childMoved : OrderOptions -> Query
 childMoved   = ChildMoved
 
-{-| Type to specify ordering and options of queries -}
+{-| Type to specify ordering, filtering and limiting of queries -}
 type OrderOptions
  = NoOrder
- | OrderByChild String (RangeOptions JE.Value)
- | OrderByValue (RangeOptions JE.Value)
- | OrderByKey (RangeOptions String)
- | OrderByPriority (RangeOptions (Priority, Maybe String))
+ | OrderByChild String (RangeOptions JE.Value) LimitOptions
+ | OrderByValue (RangeOptions JE.Value) LimitOptions
+ | OrderByKey (RangeOptions String) LimitOptions
+ | OrderByPriority (RangeOptions (Priority, Maybe String)) LimitOptions
 
-{-| Type to specify filtering options for the use within a `OrderOption` -}
+{-| Type to specify filtering options for the use within an ordered query -}
 type RangeOptions t
  = NoRange
  | StartAt t
@@ -459,7 +465,7 @@ type RangeOptions t
  | Range t t
  | EqualTo t
 
-{-| Type to specify limiting the size of the query result set -}
+{-| Type to specify limiting the size of the query result set. Used within an ordered query -}
 type LimitOptions
  = NoLimit
  | LimitToFirst Int
@@ -470,19 +476,19 @@ noOrder : OrderOptions
 noOrder = NoOrder
 
 {-| Order results by the value of a given child -}
-orderByChild : String -> RangeOptions JE.Value -> OrderOptions
+orderByChild : String -> RangeOptions JE.Value -> LimitOptions -> OrderOptions
 orderByChild = OrderByChild
 
 {-| Order results by value -}
-orderByValue : RangeOptions JE.Value -> OrderOptions
+orderByValue : RangeOptions JE.Value -> LimitOptions -> OrderOptions
 orderByValue = OrderByValue
 
 {-| Order results by key -}
-orderByKey : RangeOptions String -> OrderOptions
+orderByKey : RangeOptions String -> LimitOptions -> OrderOptions
 orderByKey = OrderByKey
 
 {-| Order results by priority (and maybe secondary by key) -}
-orderByPriority : RangeOptions (Priority, Maybe String) -> OrderOptions
+orderByPriority : RangeOptions (Priority, Maybe String) -> LimitOptions -> OrderOptions
 orderByPriority = OrderByPriority
 
 {-| Don't filter the ordered results -}
@@ -513,15 +519,15 @@ The type of the value depends on the order criterium -}
 equalTo : t -> RangeOptions t
 equalTo = EqualTo
 
-{-| Don't limit the size of the query result set -}
+{-| Don't limit the number of children in the result set of an ordered query -}
 noLimit : LimitOptions
 noLimit = NoLimit
 
-{-| Limit the query result set to the first n items -}
+{-| Limit the result set of an ordered query to the first certain number of children. -}
 limitToFirst : Int -> LimitOptions
 limitToFirst = LimitToFirst
 
-{-| Limit the query result set to the last n items -}
+{-| Limit the result set of an ordered query to the last certain number of children. -}
 limitToLast : Int -> LimitOptions
 limitToLast = LimitToLast
 
@@ -575,7 +581,7 @@ subscribeConnected createResponseTask location =
         Err _    -> Nothing
     )
     (always (Task.succeed ()))
-    (valueChanged noOrder noLimit)
+    (valueChanged noOrder)
     (location |> root |> sub ".info/connected")
 
 {-| Subscribe to server time offset -}
@@ -589,7 +595,7 @@ subscribeServerTimeOffset createResponseTask location =
         Err _     -> Nothing
     )
     (always (Task.succeed ()))
-    (valueChanged noOrder noLimit)
+    (valueChanged noOrder)
     (location |> root |> sub ".info/serverTimeOffset")
 
 {-| A placeholder value for auto-populating the current timestamp

@@ -38,7 +38,7 @@ port runQuery =
     subscribe
         (Signal.send values.address << .value)
         doNothing
-        (valueChanged noOrder noLimit)
+        (valueChanged noOrder)
         (fromUrl url)
 
 view : JE.Value -> Html

@@ -251,11 +251,11 @@ andAnyway task1 task2 =
 
 port runTasks : Task () ()
 port runTasks =
-  let loc = fromUrl url in
-              doSubscribe "query1 value" (valueChanged noOrder noLimit) loc
+  let loc = fromUrl url in<
+              doSubscribe "query1 value" (valueChanged noOrder) loc
   `andAnyway` (Task.spawn <| doSet "async set1 value" (JE.string "start") loc)
   `andAnyway` doSubscribe "query2 parent value"
-      (valueChanged noOrder noLimit)
+      (valueChanged noOrder)
       (loc |> parent)
   `andAnyway` doSleep "1" 2
   `andAnyway` doOpen "open pushed" (push loc)
@@ -267,10 +267,10 @@ port runTasks =
   `andAnyway` doSet "set2 value" (JE.string "hello") loc
   `andAnyway` doOpen "root" (loc |> root)
   `andAnyway` doOpen "open bad" (loc |> root |> parent)
-  `andAnyway` doSubscribe "query3 child added" (childAdded noOrder noLimit) loc
-  `andAnyway` doSubscribe "query4 child changed" (childChanged noOrder noLimit) loc
-  `andAnyway` doSubscribe "query5 child removed" (childRemoved noOrder noLimit) loc
-  `andAnyway` doSubscribe "query6 child moved" (childMoved noOrder noLimit) loc
+  `andAnyway` doSubscribe "query3 child added" (childAdded noOrder) loc
+  `andAnyway` doSubscribe "query4 child changed" (childChanged noOrder) loc
+  `andAnyway` doSubscribe "query5 child removed" (childRemoved noOrder) loc
+  `andAnyway` doSubscribe "query6 child moved" (childMoved noOrder) loc
   `andAnyway` doSleep "2" 2
   `andAnyway` doSet "set3 object value"
       (JE.object [("a", (JE.string "hello")), ("b", (JE.string "Elm"))])
@@ -278,10 +278,10 @@ port runTasks =
   `andAnyway` doSleep "3" 2
   `andAnyway` doSet "set4 add child" (JE.string "at Firebase") (loc |> sub "c")
   `andAnyway` doSleep "4" 2
-  `andAnyway` ( doSubscribe "subscribe" (valueChanged noOrder noLimit) loc
+  `andAnyway` ( doSubscribe "subscribe" (valueChanged noOrder) loc
                 `andThen` \subscription -> doUnsubscribe "unsubscribe" subscription
               )
-  `andAnyway` doOnce "query once" (valueChanged noOrder noLimit) loc
+  `andAnyway` doOnce "query once" (valueChanged noOrder) loc
   `andAnyway` doRemove "remove child" (loc |> sub "b")
   `andAnyway` doUpdate "update object a and d"
       (JE.object [("a", (JE.string "Hello")), ("d", (JE.string "Elmies"))])
