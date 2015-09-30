@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "summary": "ElmFire demo app",
-  "repository": "http://github.com/thomasweiser/elmfire.git",
+  "repository": "https://github.com/ThomasWeiser/elmfire.git",
   "license": "BSD3",
   "source-directories": [
     "src",

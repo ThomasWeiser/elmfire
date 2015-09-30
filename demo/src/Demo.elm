@@ -251,7 +251,7 @@ andAnyway task1 task2 =
 
 port runTasks : Task () ()
 port runTasks =
-  let loc = fromUrl url in<
+  let loc = fromUrl url in
               doSubscribe "query1 value" (valueChanged noOrder) loc
   `andAnyway` (Task.spawn <| doSet "async set1 value" (JE.string "start") loc)
   `andAnyway` doSubscribe "query2 parent value"
