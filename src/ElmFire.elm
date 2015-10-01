@@ -228,7 +228,7 @@ root = RootLocation
 {-| Construct a new child location using a to-be-generated key.
 
 A unique key is generated whenever the location is used in one of the tasks,
-notably `open`or `set`.
+notably `open` or `set`.
 Keys are prefixed with a client-generated timestamp so that a resulting list
 will be chronologically-sorted.
 
@@ -357,9 +357,6 @@ onDisconnectCancel = Native.ElmFire.onDisconnectCancel
 
 
 {-| Query a Firebase location by subscription
-
-(This early version of ElmFire only supports simple value queries,
-without ordering and filtering.)
 
 On success the task returns a Subscription,
 which can be used to match the corresponding responses
