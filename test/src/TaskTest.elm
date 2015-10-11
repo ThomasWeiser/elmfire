@@ -3,7 +3,7 @@ module TaskTest
   , runTest
   , test, sequence
   , succeeds, fails, equals, meets, errorMeets
-  , clear, createReporter, map, printResult, printString
+  , clear, createReporter, map, printMapResult, printResult, printString
   , (|>>), (|>+), (|>-)
   ) where
 
@@ -185,19 +185,23 @@ errorMeets description condition testTask =
         `andThen` \_ -> succeed val
       )
 
-printResult : TestTask x a -> TestTask x a
-printResult testTask =
+printMapResult : (a -> b) -> TestTask x a -> TestTask x a
+printMapResult mapping testTask =
   \context ->
     ( testTask context
       `onError` \err ->
-        ( report context TestPrint (toString (Err err))
+        ( report context TestPrint ("Error: " ++ toString err)
           `andThen` \_ -> fail err
         )
     )
     `andThen` \val ->
-      ( report context TestPrint (toString (Ok val))
+      ( report context TestPrint ("Result: " ++ toString (mapping val))
         `andThen` \_ -> succeed val
       )
+
+printResult : TestTask x a -> TestTask x a
+printResult testTask =
+  printMapResult identity testTask
 
 printString : TestTask x String -> TestTask x String
 printString testTask =

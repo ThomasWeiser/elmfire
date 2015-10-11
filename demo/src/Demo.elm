@@ -69,14 +69,13 @@ startModel = { log = [], tasks = [] }
 
 progression : LogEntry -> Model -> Model
 progression note model =
-  { model |
-      log <- note :: model.log
-    , tasks <-
-        case note of
-          LogTaskStart   step   -> replaceOrAppend step note model.tasks
-          LogTaskSuccess step _ -> replaceOrAppend step note model.tasks
-          LogTaskFailure step _ -> replaceOrAppend step note model.tasks
-          otherwise -> model.tasks
+  { log = note :: model.log
+  , tasks =
+      case note of
+        LogTaskStart   step   -> replaceOrAppend step note model.tasks
+        LogTaskSuccess step _ -> replaceOrAppend step note model.tasks
+        LogTaskFailure step _ -> replaceOrAppend step note model.tasks
+        otherwise -> model.tasks
   }
 
 replaceOrAppend : String -> LogEntry -> TaskList -> TaskList
@@ -139,11 +138,12 @@ viewLogEntry logEntry =
   LogTaskFailure step err ->
     Just <| line "failure" step err
   LogResponse response ->
-    Just <| case response of
+    case response of
+      NoResponse -> Nothing
       Data snapshot ->
-        line "response" (toString snapshot.subscription) (viewSnapshot snapshot)
+        Just <| line "response" (toString snapshot.subscription) (viewSnapshot snapshot)
       Canceled (cancellation) ->
-        case cancellation of
+        Just <| case cancellation of
           Unsubscribed id ->
             line "canceled" (toString id) "unsubscribed"
           QueryError id err ->
@@ -181,10 +181,6 @@ intercept valueToString step task =
       succeed val
 
 -------------------------------------------------------------------------------
-
-doOpen : String -> Location -> Task Error Reference
-doOpen step location =
-  intercept toString step (open location)
 
 doSet : String -> JE.Value -> Location -> Task Error Reference
 doSet step value location =
@@ -258,15 +254,14 @@ port runTasks =
       (valueChanged noOrder)
       (loc |> parent)
   `andAnyway` doSleep "1" 2
-  `andAnyway` doOpen "open pushed" (push loc)
+  `andAnyway` open (push loc)
   `andThen`   ( \ref ->
-                doShowRefLocation "opened location" ref
-                `andAnyway` doRefUrl "opened url" ref
+                doRefUrl "opened url" ref
                 `andAnyway` doRefKey "opened key" ref
               )
   `andAnyway` doSet "set2 value" (JE.string "hello") loc
-  `andAnyway` doOpen "root" (loc |> root)
-  `andAnyway` doOpen "open bad" (loc |> root |> parent)
+  `andAnyway` open (loc |> root)
+  `andAnyway` open (loc |> root |> parent)
   `andAnyway` doSubscribe "query3 child added" (childAdded noOrder) loc
   `andAnyway` doSubscribe "query4 child changed" (childChanged noOrder) loc
   `andAnyway` doSubscribe "query5 child removed" (childRemoved noOrder) loc
@@ -286,7 +281,7 @@ port runTasks =
   `andAnyway` doUpdate "update object a and d"
       (JE.object [("a", (JE.string "Hello")), ("d", (JE.string "Elmies"))])
       loc
-  `andAnyway` ( doOpen "push open" (loc |> sub "e" |> push)
+  `andAnyway` ( open (loc |> sub "e" |> push)
                 `andThen`
                 \ref -> doSet "push set" (JE.string <| key ref) (location ref)
                 `andThen`

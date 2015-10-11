@@ -26,6 +26,8 @@ import ElmFire.Auth as Auth
 -- Individual executions of this test suite use independent branches in this Firebase.
 url = "https://elmfiretest.firebaseio.com/"
 
+dino = fromUrl url |> sub "dinosaur-facts"
+
 -------------------------------------------------------------------------------
 
 isNothing : Maybe a -> Bool
@@ -53,12 +55,29 @@ action1 maybeValue =
         _ -> Remove
     _ -> Abort
 
+type alias PrintableSnapshot =
+  { subscription: Subscription
+  , key: String
+  , existing: Bool
+  , value: JE.Value
+  , prevKey: Maybe String
+  , priority: Priority
+  }
+
+printableSnapshot : Snapshot -> PrintableSnapshot
+printableSnapshot snap =
+    { subscription = snap.subscription
+    , key = snap.key
+    , existing = snap.existing
+    , value = snap.value
+    , prevKey = snap.prevKey
+    , priority = snap.priority
+    }
+
 type Response
   = NoResponse
-  | Data Snapshot
+  | Data PrintableSnapshot
   | Canceled Cancellation
-
-dino = fromUrl url |> sub "dinosaur-facts"
 
 test1 =
 
@@ -97,7 +116,7 @@ test1 =
   |>> map location
   |>+ \loc
    -> test  "once valueChanged (at child)" (once (valueChanged noOrder) loc)
-  |>> printResult
+  |>> printMapResult printableSnapshot
   |>> meets "once returned same key" (\snapshot -> snapshot.key == key ref)
 
   |>- test  "onDisconnectSet"
@@ -202,7 +221,7 @@ test1 =
   -- Test reading and writing (except complex queries) ------------------------
 
   |>- test  "once valueChanged (at child)" (once (valueChanged noOrder) loc)
-  |>> printResult
+  |>> printMapResult printableSnapshot
   |>> meets "once returned same key" (\snapshot -> snapshot.key == key ref)
   |>> meets "once returned right value" (\snapshot -> snapshot.value == JE.string "Hello")
   |>> meets "once returned right prevKey" (\snapshot -> snapshot.prevKey == Nothing)
@@ -217,7 +236,7 @@ test1 =
   |>+ \reporter1
    -> test  "subscribe child added (at parent)"
             ( subscribe
-                (Data >> reporter1)
+                (printableSnapshot >> Data >> reporter1)
                 (Canceled >> reporter1)
                 (childAdded noOrder)
                 (parent loc)
@@ -234,11 +253,11 @@ test1 =
   |>+ \key
    -> test  "transaction on that child"
             (transaction action1 (loc |> parent |> sub key) True)
-  |>> printResult
   |>> meets "committed and returned changed value"
             (\(committed, snapshot) ->
                 committed && snapshot.value == JE.string "Elmers!"
             )
+  |>> printMapResult (snd >> printableSnapshot)
 
   |>- test  "once valueChanged at non-existing location"
             (once (valueChanged noOrder) (sub "_non_existing_key_" loc))
@@ -262,7 +281,7 @@ test1 =
   |>+ \reporter2
    -> test  "subscribe without permission"
             ( subscribe
-                (Data >> reporter2)
+                (printableSnapshot >> Data >> reporter2)
                 (Canceled >> reporter2)
                 (valueChanged noOrder)
                 (fromUrl url |> sub "unaccessible")
@@ -308,7 +327,7 @@ test1 =
   |>> printString
 
   |>- test  "toSnapshotList" (once (valueChanged noOrder) (dino |> sub "scores"))
-  |>> map toSnapshotList
+  |>> map (toSnapshotList >> List.map printableSnapshot)
   |>> printResult
 
   |>- test  "dinos, ordered by child 'height', limited to last 2"
@@ -323,7 +342,7 @@ test1 =
   |>+ \reporterDino
    -> test  "subscribe dino scores, ordered by value, limited to first 3"
             ( subscribe
-                (Data >> reporterDino)
+                (printableSnapshot >> Data >> reporterDino)
                 (Canceled >> reporterDino)
                 (childAdded (orderByValue noRange (limitToFirst 3)))
                 (dino |> sub "scores")
