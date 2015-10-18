@@ -12,9 +12,7 @@ import Task exposing (Task, andThen, onError, fail, succeed, sleep)
 import Json.Encode as JE
 import Time
 import Html exposing (Html, div, span, input, output, label, text, a, h1, h2)
-import Html.Events exposing (on, targetValue)
 import Html.Attributes exposing (href, target, class)
-import Debug
 
 import ElmFire exposing
   ( fromUrl, toUrl, key, sub, parent, root, push, location, open
@@ -28,6 +26,7 @@ import ElmFire exposing
 
 -------------------------------------------------------------------------------
 
+url : String
 url = "https://elmfire.firebaseio-demo.com/demo"
 
 -------------------------------------------------------------------------------
@@ -161,6 +160,7 @@ viewValue value =
   -- if JE.null == value then "no value" else JE.encode 0 value
   JE.encode 0 value
 
+main : Signal Html
 main = Signal.map view state
 
 -------------------------------------------------------------------------------

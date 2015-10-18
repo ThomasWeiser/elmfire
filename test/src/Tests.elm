@@ -13,7 +13,6 @@ import Json.Encode as JE
 import Json.Decode as JD exposing ((:=))
 import Html exposing (Html, div, span, text, a, h1, h2)
 import Html.Attributes exposing (href, target, class)
-import Debug
 
 import TaskTest exposing (..)
 
@@ -24,8 +23,10 @@ import ElmFire.Auth as Auth
 
 -- Use this test Firebase. The tests below rely on some settings in this Firebase.
 -- Individual executions of this test suite use independent branches in this Firebase.
+url : String
 url = "https://elmfiretest.firebaseio.com/"
 
+dino : Location
 dino = fromUrl url |> sub "dinosaur-facts"
 
 -------------------------------------------------------------------------------
@@ -139,6 +140,20 @@ test1 =
             (once (valueChanged noOrder) (loc |> parent |> sub "onlineState"))
   |>> meets "value is written"
             (\snapshot -> snapshot.value == JE.string "disconnected")
+
+  -- Test updating ------------------------------------------------------------
+
+  |>- test  "deep update"
+            ( update
+                (JE.object [("a/b", JE.string "AB")])
+                (loc |> parent)
+              `Task.andThen` \_ ->
+              once
+                (valueChanged noOrder)
+                (loc |> parent |> sub "a/b")
+            )
+  |>> meets "updated value ok"
+            (\snapshot -> snapshot.value == JE.string "AB")
 
   -- User management tests ----------------------------------------------------
 
@@ -441,4 +456,5 @@ view testDisplay =
   , testDisplay
   ]
 
+main : Signal Html
 main = Signal.map view testDisplay

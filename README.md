@@ -1,4 +1,4 @@
-# ElmFire: Use the Firebase API in Elm.	
+# ElmFire: Use the Firebase API in Elm
 
 Virtually all features of the [Firebase Web API](https://www.firebase.com/docs/web/) are exposed as a [library](http://package.elm-lang.org/packages/ThomasWeiser/ElmFire/latest) for [Elm](http://elm-lang.org/):
 
@@ -314,10 +314,10 @@ An older, still functional testing app lives in the directory `demo`.
 
 Plans for the near future:
 
+* New [API functionality)[https://www.firebase.com/blog/2015-09-24-atomic-writes-and-more.html] from Firebase's JS library 2.3
+    * Ordering queries by deep paths
 * Synchronization of Dicts, Lists, Arrays. Maybe more convenience functions.
+    * First draft for (Dict.elm)[https://github.com/ThomasWeiser/elmfire/blob/dict/src/ElmFire/Dict.elm]
 * Better test app
 * A nice example app
 * Adapt this Readme to better serve as the [front doc](http://package.elm-lang.org/packages/ThomasWeiser/ElmFire/latest) at the package site.
-
-Please take notice that the API is not finalized yet.
-The exact interface may change a bit here and there.

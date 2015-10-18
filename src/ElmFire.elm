@@ -299,6 +299,7 @@ setPriority = Native.ElmFire.setPriority
 This will overwrite only children present in the first parameter
 and will leave others untouched.
 
+It is also possible to do atomic multi-location updates as documented (here)[https://www.firebase.com/blog/2015-09-24-atomic-writes-and-more.html].
 -}
 update : JE.Value -> Location -> Task Error Reference
 update = Native.ElmFire.update False
@@ -472,7 +473,9 @@ type LimitOptions
 noOrder : OrderOptions
 noOrder = NoOrder
 
-{-| Order results by the value of a given child -}
+{-| Order results by the value of a given child
+(or deep child, as documented (here)[https://www.firebase.com/blog/2015-09-24-atomic-writes-and-more.html])
+-}
 orderByChild : String -> RangeOptions JE.Value -> LimitOptions -> OrderOptions
 orderByChild = OrderByChild
 

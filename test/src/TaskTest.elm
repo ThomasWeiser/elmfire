@@ -18,7 +18,6 @@ import Dict exposing (Dict)
 import Task exposing (Task, andThen, onError, fail, succeed)
 import Html exposing (Html, div, span, text, a, h1, h2)
 import Html.Attributes exposing (href, target, class)
-import Debug
 
 -------------------------------------------------------------------------------
 
@@ -36,6 +35,7 @@ report context activity text =
 
 type alias Model = Dict String (List Report)
 
+startModel : Model
 startModel = Dict.empty
 
 progression : Maybe Report -> Model -> Model
@@ -243,4 +243,3 @@ sequence name testTask =
     report name RunSequence name
     `andThen`
     \_ -> testTask name
-
