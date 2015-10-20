@@ -314,10 +314,8 @@ An older, still functional testing app lives in the directory `demo`.
 
 Plans for the near future:
 
-* New [API functionality)[https://www.firebase.com/blog/2015-09-24-atomic-writes-and-more.html] from Firebase's JS library 2.3
-    * Ordering queries by deep paths
-* Synchronization of Dicts, Lists, Arrays. Maybe more convenience functions.
-    * First draft for (Dict.elm)[https://github.com/ThomasWeiser/elmfire/blob/dict/src/ElmFire/Dict.elm]
+* Synchronization of Dicts, Lists, Arrays. A more higher-level API
+    * In development: https://github.com/ThomasWeiser/elmfire-extra
 * Better test app
 * A nice example app
 * Adapt this Readme to better serve as the [front doc](http://package.elm-lang.org/packages/ThomasWeiser/ElmFire/latest) at the package site.
