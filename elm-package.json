@@ -1,5 +1,5 @@
 {
-    "version": "1.0.1",
+    "version": "1.0.2",
     "summary": "Firebase Bindings for Elm",
     "repository": "https://github.com/ThomasWeiser/elmfire.git",
     "license": "BSD3",
