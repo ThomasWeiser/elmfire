@@ -46,7 +46,6 @@ Elm.Native.ElmFire.make = function (localRuntime) {
 
   function error2elm (tag, description) {
     return {
-      _: {},
       tag: { ctor: tag },
       description: description
     };
@@ -375,7 +374,6 @@ Elm.Native.ElmFire.make = function (localRuntime) {
     }
     var value = fbSnapshot .val ();
     return {
-      _: {},
       subscription: subscription,
       key: key,
       reference: fbSnapshot .ref (),

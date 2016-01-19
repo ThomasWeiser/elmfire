@@ -38,7 +38,6 @@ Elm.Native.ElmFire.Auth.make = function (localRuntime) {
 
   function authError2elm (tag, description) {
     return {
-      _: {},
       tag: { ctor: 'AuthError', _0: { ctor: tag } },
       description: description
     };
@@ -86,7 +85,6 @@ Elm.Native.ElmFire.Auth.make = function (localRuntime) {
       specifics = fbAuth [fbAuth.provider];
     }
     return {
-      _: {},
       uid: fbAuth .uid,
       provider: fbAuth .provider,
       token: fbAuth .token,
