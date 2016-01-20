@@ -1,6 +1,6 @@
 # ElmFire: Use the Firebase API in Elm
 
-Virtually all features of the [Firebase Web API](https://www.firebase.com/docs/web/) are exposed as a [library](http://package.elm-lang.org/packages/ThomasWeiser/ElmFire/latest) for [Elm](http://elm-lang.org/):
+Virtually all features of the [Firebase Web API](https://www.firebase.com/docs/web/) are exposed as a [library](http://package.elm-lang.org/packages/ThomasWeiser/elmfire/latest) for [Elm](http://elm-lang.org/):
 
 - Setting, removing and modifying values
 - Transactions
@@ -318,4 +318,4 @@ Plans for the near future:
     * In development: https://github.com/ThomasWeiser/elmfire-extra
 * Better test app
 * A nice example app
-* Adapt this Readme to better serve as the [front doc](http://package.elm-lang.org/packages/ThomasWeiser/ElmFire/latest) at the package site.
+* Adapt this Readme to better serve as the [front doc](http://package.elm-lang.org/packages/ThomasWeiser/elmfire/latest) at the package site.
