@@ -10,6 +10,10 @@ Virtually all features of the [Firebase Web API](https://www.firebase.com/docs/w
 - User management
 - Offline capabilities
 
+In addition to these base functions the package __[elmfire-extra](http://package.elm-lang.org/packages/ThomasWeiser/elmfire-extra/latest)__ provides a higher-level synchronization API, which allows you to treat your Firebase data like a local Elm-Dict.
+
+_Demo application for these APIs: [Collaborative TodoMVC](https://github.com/ThomasWeiser/todomvc-elmfire)_
+
 ## API Usage
 
 The API design corresponds closely to the targeted Firebase JavaScript API.
@@ -309,13 +313,3 @@ This app uses a small ad-hoc testing framework for task-based code.
 There is a Makefile to build the app. On most Unix-like systems a `cd test; make all open` should do the trick.
 
 An older, still functional testing app lives in the directory `demo`.
-
-## Future work
-
-Plans for the near future:
-
-* Synchronization of Dicts, Lists, Arrays. A more higher-level API
-    * In development: https://github.com/ThomasWeiser/elmfire-extra
-* Better test app
-* A nice example app
-* Adapt this Readme to better serve as the [front doc](http://package.elm-lang.org/packages/ThomasWeiser/elmfire/latest) at the package site.
