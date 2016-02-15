@@ -143,7 +143,7 @@ type Location
   | PushLocation Location
   | RefLocation Reference
 
-{-| A Firebase reference, which is an opaque type that represents a opened path.
+{-| A Firebase reference, which is an opaque type that represents an opened path.
 
 References are returned from many Firebase tasks as well as in query results.
 -}
