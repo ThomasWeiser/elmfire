@@ -235,7 +235,7 @@ will be chronologically-sorted.
 You may `open` the location or use `set` to actually generate the key
 and get its name.
 
-    set val (push loc) `andThen` (\ref -> ... ref.key ...)
+    set val (push loc) `andThen` (\ref -> ... key ref ...)
 -}
 push : Location -> Location
 push = PushLocation
