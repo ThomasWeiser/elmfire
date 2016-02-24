@@ -66,7 +66,6 @@ update action model =
         SendConfirmation maybeRef ->
             case maybeRef of
                 Just ref ->
-                    -- ( { model | msg = "Ref received:" }
                     ( model
                     , Effects.none
                     )
@@ -85,8 +84,8 @@ view address model =
         []
         [ div []
             [ text "ElmFire test at: "
-            , a [ href "https://elmfire.firebaseio-demo.com/example" ]
-                [ text "https://elmfire.firebaseio-demo.com/example" ]
+            , a [ href url ]
+                [ text url ]
             ]
         , div []
             [ text "set value: "
@@ -97,7 +96,7 @@ view address model =
             ]
         , div []
             [ text <| "query result: ￼" ++ model.val ]
-        -- , div [] [ text model.msg ]
+        , div [] [ text model.msg ]
         ]
 
 -- EFFECTS
