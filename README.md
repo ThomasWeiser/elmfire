@@ -283,7 +283,7 @@ subscribeAuth
 
 ## Examples
 
-There is a very basic example app in `example/src/Example.elm`. To build it:
+There is a basic example app in `example/src/Example.elm`. To build it:
 
 ```sh
 cd example
@@ -299,7 +299,7 @@ elm make --output Example.html src/Example.elm
 
 ### TodoMVC
 
-A more complete example is
+A more extensive example is
 [this implementation of TodoMVC](https://github.com/ThomasWeiser/todomvc-elmfire)
 as a collaborative real-time app.
 
