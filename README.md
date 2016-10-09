@@ -14,6 +14,14 @@ In addition to these base functions the package __[elmfire-extra](http://package
 
 _Demo application for these APIs: [Collaborative TodoMVC](https://github.com/ThomasWeiser/todomvc-elmfire)_
 
+---
+
+_This library currently targets Elm version 0.16._
+
+_A new version with an [effect manager](https://guide.elm-lang.org/effect_managers/index.html) for Elm 0.17 is under development. Please stay tuned!_
+
+---
+
 ## API Usage
 
 The API design corresponds closely to the targeted Firebase JavaScript API.
