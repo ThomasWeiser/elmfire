@@ -18,7 +18,7 @@ _Demo application for these APIs: [Collaborative TodoMVC](https://github.com/Tho
 
 _This library currently targets Elm version 0.16._
 
-_A new version with an [effect manager](https://guide.elm-lang.org/effect_managers/index.html) for Elm 0.17 is under development. Please stay tuned!_
+_A new version with an [effect manager](https://guide.elm-lang.org/effect_managers/index.html) for Elm 0.17/0.18 is under development. Please stay tuned!_
 
 ---
 
