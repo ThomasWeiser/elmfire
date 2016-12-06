@@ -7,61 +7,74 @@ Use the displayed link to show the Firebase bashboard for the location.
 import Html exposing (Html, div, input, output, label, text, a)
 import Html.Events exposing (on, targetValue)
 import Html.Attributes exposing (href, target)
-import Signal exposing (Signal, Mailbox, mailbox, message)
+import Html.App
 import Task exposing (Task)
-import Json.Encode as JE exposing (string, encode)
+import Json.Encode as JE
+import Json.Decode as JD
 
-import ElmFire exposing
-  ( fromUrl, set, subscribe, valueChanged, noOrder, noLimit
+import ElmFire.LowLevel exposing
+  ( fromUrl, toUrl, set, subscribe, valueChanged, noOrder, noLimit
   , Reference, Snapshot, Subscription, Error
   )
 
--- You may want to change this url, but you don't have to
-url : String
-url = "https://elmfire.firebaseio-demo.com/example"
+-- Firebase location to access:
+-- (You may want to change this url to something you own, but you don't have to)
+firebaseUrl : String
+firebaseUrl = "https://elmfire.firebaseio-demo.com/example"
 
-values : Mailbox JE.Value
-values = mailbox JE.null
 
-inputString : Mailbox String
-inputString = mailbox ""
+main =
+  Html.App.program
+    { init = init
+    , update = update
+    , view = view
+    , subscriptions = subscriptions
+    }
 
-port runSet : Signal (Task Error Reference)
-port runSet = Signal.map
-  (\str -> set (string str) (fromUrl url))
-  inputString.signal
 
-doNothing : a -> Task x ()
-doNothing = always (Task.succeed ())
+type alias Model = () -- String
 
-port runQuery : Task Error Subscription
-port runQuery =
-    subscribe
-        (Signal.send values.address << .value)
-        doNothing
-        (valueChanged noOrder)
-        (fromUrl url)
 
-view : JE.Value -> Html
-view value =
-  let outputText = encode 0 value
-  in
+type Msg
+  = Send String
+  | Sent (Result Error ())
+
+
+init : (Model, Cmd Msg)
+init =
+  ( ()
+  , Cmd.none
+  )
+
+
+update : Msg -> Model -> (Model, Cmd Msg)
+update msg model =
+  case msg of
+    Send text ->
+      ( model
+      , Task.perform
+          (Sent << Err)
+          (Sent << Ok << (always ()))
+          (set (JE.string text) (fromUrl firebaseUrl))
+      )
+    Sent result ->
+      let _ = Debug.log "Sent" result
+      in
+        ( model, Cmd.none )
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+  Sub.none
+
+
+view : Model -> Html Msg
+view model =
   div []
-  [ text "ElmFire test at: "
-  , a [href url, target "_blank"] [text url]
-  , div []
     [ label []
-      [ text "set value: "
-      , input [ on "input" targetValue (message inputString.address) ] []
+      [ text "Set value: "
+      , input
+          [ on "input" (JD.map Send targetValue) ]
+          []
       ]
     ]
-  , div []
-    [ label []
-      [ text "query result: "
-      , output [] [ text outputText ]
-      ]
-    ]
-  ]
-
-main : Signal Html
-main = Signal.map view values.signal
