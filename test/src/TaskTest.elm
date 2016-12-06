@@ -1,11 +1,11 @@
-module TaskTest
+module TaskTest exposing
   ( testDisplay
   , runTest
   , test, sequence
   , succeeds, fails, equals, meets, errorMeets
   , clear, createReporter, map, printMapResult, printResult, printString
   , (|>>), (|>+), (|>-)
-  ) where
+  )
 
 {- A Sketch of a testing framework for task-based code.
 

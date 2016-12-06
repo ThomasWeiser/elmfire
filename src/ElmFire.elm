@@ -1,4 +1,4 @@
-module ElmFire
+module ElmFire exposing
   ( Location
   , fromUrl, sub, parent, root, push
   , Reference
@@ -24,7 +24,7 @@ module ElmFire
   , onDisconnectUpdate, onDisconnectRemove, onDisconnectCancel
   , serverTimeStamp, subscribeServerTimeOffset
   , Error, ErrorType (..), AuthErrorType (..)
-  ) where
+  )
 
 
 {-| Elm Bindings to Firebase.
