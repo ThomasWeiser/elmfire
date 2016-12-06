@@ -2,7 +2,7 @@ module ElmFire.LowLevel
     exposing
         ( Location
         , fromUrl
-        , sub
+        , child
         , parent
         , root
         , push
@@ -72,7 +72,7 @@ module ElmFire.LowLevel
 ElmFire maps the Firebase JavaScript API to Elm functions and tasks.
 
 # Firebase Locations
-@docs Location, fromUrl, sub, parent, root, push
+@docs Location, fromUrl, child, parent, root, push
 
 # Firebase References
 @docs Reference, open, key, toUrl, location
@@ -174,7 +174,7 @@ that represents a literal path into a firebase.
 
 A location can be constructed or obtained from
 - an absolute path by `fromUrl`
-- relative to another location by `sub`, `parent`, `root`, `push`
+- relative to another location by `child`, `parent`, `root`, `push`
 - a reference by `location`
 
 Locations are generally unvalidated until their use in a task.
@@ -182,7 +182,7 @@ The constructor functions are pure.
 -}
 type Location
     = UrlLocation String
-    | SubLocation String Location
+    | ChildLocation String Location
     | ParentLocation Location
     | RootLocation Location
     | PushLocation Location
@@ -251,7 +251,7 @@ type SnapshotFB
     = SnapshotFB
 
 
-{-| Possible return values for update functions of a transaction
+{-| Return values for update functions of a transaction
 -}
 type Action
     = Abort
@@ -270,11 +270,11 @@ fromUrl =
 
 {-| Construct a location for the descendant at the specified relative path.
 
-    locUsers = sub "users" loc
+    locUsers = child "users" loc
 -}
-sub : String -> Location -> Location
-sub =
-    SubLocation
+child : String -> Location -> Location
+child =
+    ChildLocation
 
 
 {-| Construct the parent location from a child location.
@@ -347,7 +347,7 @@ It can be used to check the location and to cache Firebase references.
 The task fails if the location construct is invalid.
 
     openTask =
-      (open <| sub user <| fromUrl "https://elmfire.firebaseio-demo.com/users")
+      (open <| child user <| fromUrl "https://elmfire.firebaseio-demo.com/users")
       `andThen` (\ref -> Signal.send userRefCache.address (user, ref))
 -}
 open : Location -> Task Error Reference
@@ -784,7 +784,7 @@ subscribeConnected createResponseTask location =
         )
         (always (Task.succeed ()))
         (valueChanged noOrder)
-        (location |> root |> sub ".info/connected")
+        (location |> root |> child ".info/connected")
 
 
 {-| Subscribe to server time offset
@@ -805,7 +805,7 @@ subscribeServerTimeOffset createResponseTask location =
         )
         (always (Task.succeed ()))
         (valueChanged noOrder)
-        (location |> root |> sub ".info/serverTimeOffset")
+        (location |> root |> child ".info/serverTimeOffset")
 
 
 {-| A placeholder value for auto-populating the current timestamp

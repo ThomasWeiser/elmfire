@@ -81,7 +81,7 @@ var _ThomasWeiser$elmfire$Native_ElmFire = function () {
       case 'UrlLocation':
         ref = new Firebase (location._0);
         break;
-      case 'SubLocation':
+      case 'ChildLocation':
         ref = getRefStep (location._1) .child (location._0);
         break;
       case 'ParentLocation':
