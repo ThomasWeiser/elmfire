@@ -1,0 +1,26 @@
+{
+    "rules": {
+        "unaccessible": {
+          ".read": false,
+          ".write": false
+        },
+        "test": {
+          ".read": true,
+          ".write": true
+        },
+        "dinosaur-facts": {
+          ".read": true,
+          ".write": false,
+          "dinosaurs": {
+            ".indexOn": "height"
+          },
+          "scores": {
+            ".indexOn": ".value"
+          }
+        },
+        "dict": {
+          ".read": true,
+          ".write": true
+        }
+    }
+}
