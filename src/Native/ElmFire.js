@@ -75,29 +75,31 @@ var _ThomasWeiser$elmfire$Native_ElmFire = function () {
     };
   }
 
-  function getRefStep (location) {
+  function getRefStep (locationList) {
     var ref;
-    switch (location.ctor) {
-      case 'UrlLocation':
-        ref = new Firebase (location._0);
-        break;
-      case 'ChildLocation':
-        ref = getRefStep (location._1) .child (location._0);
-        break;
-      case 'ParentLocation':
-        ref = getRefStep (location._0) .parent ();
-        if (! ref) { throw ('Error: Root has no parent'); }
-        break;
-      case 'RootLocation':
-        ref = getRefStep (location._0) .root ();
-        break;
-      case 'PushLocation':
-        ref = getRefStep (location._0) .push ();
-        break;
-      case 'RefLocation':
-        ref = location._0;
-        break;
+    if (locationList.ctor === '::') {
+      var head = locationList._0;
+      var rest = locationList._1;
+      switch (head._0) {
+        case 'url':
+          ref = new Firebase (head._1);
+          break;
+        case 'child':
+          ref = getRefStep (rest) .child (head._1);
+          break;
+        case 'parent':
+          ref = getRefStep (rest) .parent ();
+          if (! ref) { throw ('Error: Root has no parent'); }
+          break;
+        case 'root':
+          ref = getRefStep (rest) .root ();
+          break;
+        case 'push':
+          ref = getRefStep (rest) .push ();
+          break;
+      }
     }
+
     if (! ref) {
      throw ('Bad Firebase reference.' + pleaseReportThis);
     }
@@ -107,7 +109,7 @@ var _ThomasWeiser$elmfire$Native_ElmFire = function () {
   function getRef (location, failureCallback) {
     var ref;
     try {
-      ref = getRefStep (location);
+      ref = getRefStep (location._0);
     }
     catch (exception) {
       failureCallback (_elm_lang$core$Native_Scheduler.fail (error2elm ('LocationError', exception.toString ())));

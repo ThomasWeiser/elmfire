@@ -118,6 +118,7 @@ ElmFire maps the Firebase JavaScript API to Elm functions and tasks.
 @docs Error, ErrorType, AuthErrorType
 -}
 
+import ElmFire.Types exposing (..)
 import Native.Firebase
 import Native.ElmFire
 import Time exposing (Time)
@@ -181,12 +182,16 @@ Locations are generally unvalidated until their use in a task.
 The constructor functions are pure.
 -}
 type Location
-    = UrlLocation String
-    | ChildLocation String Location
-    | ParentLocation Location
-    | RootLocation Location
-    | PushLocation Location
-    | RefLocation Reference
+    = Location LocationSpec
+
+
+
+{- Unfortunately we cannot use a union type for Location.
+
+   The implementation of the effect manager demands Location to be a comparable type.
+   Union types are not comparable (in Elm 0.17).
+   Lists are the only aggregate type that transports comparability of its element type.
+-}
 
 
 {-| A Firebase reference, which is an opaque type that represents an opened path.
@@ -264,8 +269,8 @@ type Action
     loc = fromUrl "https://elmfire.firebaseio-demo.com/foo/bar"
 -}
 fromUrl : String -> Location
-fromUrl =
-    UrlLocation
+fromUrl url =
+    Location [ ( "url", url ) ]
 
 
 {-| Construct a location for the descendant at the specified relative path.
@@ -273,8 +278,8 @@ fromUrl =
     locUsers = child "users" loc
 -}
 child : String -> Location -> Location
-child =
-    ChildLocation
+child name (Location list) =
+    Location (( "child", name ) :: list)
 
 
 {-| Construct the parent location from a child location.
@@ -282,8 +287,8 @@ child =
     loc2 = parent loc1
 -}
 parent : Location -> Location
-parent =
-    ParentLocation
+parent (Location list) =
+    Location (( "parent", "" ) :: list)
 
 
 {-| Construct the root location from descendant location
@@ -291,8 +296,8 @@ parent =
     loc2 = root loc1
 -}
 root : Location -> Location
-root =
-    RootLocation
+root (Location list) =
+    Location (( "root", "" ) :: list)
 
 
 {-| Construct a new child location using a to-be-generated key.
@@ -308,8 +313,8 @@ and get its name.
     set val (push loc) `andThen` (\ref -> ... key ref ...)
 -}
 push : Location -> Location
-push =
-    PushLocation
+push (Location list) =
+    Location (( "push", "" ) :: list)
 
 
 {-| Obtain a location from a reference.
@@ -317,8 +322,8 @@ push =
     reference = location loc
 -}
 location : Reference -> Location
-location =
-    RefLocation
+location ref =
+    fromUrl <| Native.ElmFire.toUrl ref
 
 
 {-| Get the url of a reference.
