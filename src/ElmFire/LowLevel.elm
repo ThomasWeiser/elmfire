@@ -1,31 +1,71 @@
-module ElmFire.LowLevel exposing
-  ( Location
-  , fromUrl, sub, parent, root, push
-  , Reference
-  , open, key, toUrl, location
-  , Priority (..)
-  , set, setWithPriority, setPriority, update, remove
-  , Snapshot
-  , Action (..)
-  , transaction
-  , Query, OrderOptions, RangeOptions, LimitOptions
-  , Subscription
-  , Cancellation (..)
-  , subscribe, unsubscribe, once
-  , valueChanged, childAdded, childChanged, childRemoved, childMoved
-  , noOrder, orderByChild, orderByValue, orderByKey, orderByPriority
-  , noRange, startAt, endAt, range, equalTo
-  , noLimit, limitToFirst, limitToLast
-  , toSnapshotList, toValueList, toKeyList,toPairList
-  , exportValue
-  , goOffline, goOnline
-  , subscribeConnected
-  , onDisconnectSet, onDisconnectSetWithPriority
-  , onDisconnectUpdate, onDisconnectRemove, onDisconnectCancel
-  , serverTimeStamp, subscribeServerTimeOffset
-  , Error, ErrorType (..), AuthErrorType (..)
-  )
-
+module ElmFire.LowLevel
+    exposing
+        ( Location
+        , fromUrl
+        , sub
+        , parent
+        , root
+        , push
+        , Reference
+        , open
+        , key
+        , toUrl
+        , location
+        , Priority(..)
+        , set
+        , setWithPriority
+        , setPriority
+        , update
+        , remove
+        , Snapshot
+        , Action(..)
+        , transaction
+        , Query
+        , OrderOptions
+        , RangeOptions
+        , LimitOptions
+        , Subscription
+        , Cancellation(..)
+        , subscribe
+        , unsubscribe
+        , once
+        , valueChanged
+        , childAdded
+        , childChanged
+        , childRemoved
+        , childMoved
+        , noOrder
+        , orderByChild
+        , orderByValue
+        , orderByKey
+        , orderByPriority
+        , noRange
+        , startAt
+        , endAt
+        , range
+        , equalTo
+        , noLimit
+        , limitToFirst
+        , limitToLast
+        , toSnapshotList
+        , toValueList
+        , toKeyList
+        , toPairList
+        , exportValue
+        , goOffline
+        , goOnline
+        , subscribeConnected
+        , onDisconnectSet
+        , onDisconnectSetWithPriority
+        , onDisconnectUpdate
+        , onDisconnectRemove
+        , onDisconnectCancel
+        , serverTimeStamp
+        , subscribeServerTimeOffset
+        , Error
+        , ErrorType(..)
+        , AuthErrorType(..)
+        )
 
 {-| Elm Bindings to Firebase.
 
@@ -78,7 +118,6 @@ ElmFire maps the Firebase JavaScript API to Elm functions and tasks.
 @docs Error, ErrorType, AuthErrorType
 -}
 
-
 import Native.Firebase
 import Native.ElmFire
 import Time exposing (Time)
@@ -87,42 +126,48 @@ import Json.Decode as JD
 import Task exposing (Task)
 
 
-{-| Errors reported from Firebase or ElmFire -}
+{-| Errors reported from Firebase or ElmFire
+-}
 type alias Error =
-  { tag: ErrorType
-  , description: String
-  }
+    { tag : ErrorType
+    , description : String
+    }
 
-{-| Type of errors reported from Firebase or ElmFire -}
+
+{-| Type of errors reported from Firebase or ElmFire
+-}
 type ErrorType
-  = LocationError
-  | PermissionError
-  | UnavailableError
-  | TooBigError
-  | OtherFirebaseError
-  | AuthError AuthErrorType
-  | UnknownSubscription
+    = LocationError
+    | PermissionError
+    | UnavailableError
+    | TooBigError
+    | OtherFirebaseError
+    | AuthError AuthErrorType
+    | UnknownSubscription
 
-{-| Errors reported from Authentication Module -}
+
+{-| Errors reported from Authentication Module
+-}
 type AuthErrorType
-  = AuthenticationDisabled
-  | EmailTaken
-  | InvalidArguments
-  | InvalidConfiguration
-  | InvalidCredentials
-  | InvalidEmail
-  | InvalidOrigin
-  | InvalidPassword
-  | InvalidProvider
-  | InvalidToken
-  | InvalidUser
-  | NetworkError
-  | ProviderError
-  | TransportUnavailable
-  | UnknownError
-  | UserCancelled
-  | UserDenied
-  | OtherAuthenticationError
+    = AuthenticationDisabled
+    | EmailTaken
+    | InvalidArguments
+    | InvalidConfiguration
+    | InvalidCredentials
+    | InvalidEmail
+    | InvalidOrigin
+    | InvalidPassword
+    | InvalidProvider
+    | InvalidToken
+    | InvalidUser
+    | NetworkError
+    | ProviderError
+    | TransportUnavailable
+    | UnknownError
+    | UserCancelled
+    | UserDenied
+    | OtherAuthenticationError
+
 
 {-| A Firebase location, which is an opaque type
 that represents a literal path into a firebase.
@@ -136,18 +181,21 @@ Locations are generally unvalidated until their use in a task.
 The constructor functions are pure.
 -}
 type Location
-  = UrlLocation String
-  | SubLocation String Location
-  | ParentLocation Location
-  | RootLocation Location
-  | PushLocation Location
-  | RefLocation Reference
+    = UrlLocation String
+    | SubLocation String Location
+    | ParentLocation Location
+    | RootLocation Location
+    | PushLocation Location
+    | RefLocation Reference
+
 
 {-| A Firebase reference, which is an opaque type that represents an opened path.
 
 References are returned from many Firebase tasks as well as in query results.
 -}
-type Reference = Reference
+type Reference
+    = Reference
+
 
 {-| Each existing location in a Firebase may be attributed with a priority,
 which can be a number or a string.
@@ -155,17 +203,23 @@ which can be a number or a string.
 Priorities can be used for filtering and sorting entries in a query.
 -}
 type Priority
-  = NoPriority
-  | NumberPriority Float
-  | StringPriority String
+    = NoPriority
+    | NumberPriority Float
+    | StringPriority String
 
-{-| Unique opaque identifier for running subscriptions -}
-type Subscription = Subscription
 
-{-| Message about cancelled query -}
+{-| Unique opaque identifier for running subscriptions
+-}
+type Subscription
+    = Subscription
+
+
+{-| Message about cancelled query
+-}
 type Cancellation
-  = Unsubscribed Subscription
-  | QueryError Subscription Error
+    = Unsubscribed Subscription
+    | QueryError Subscription Error
+
 
 {-| Message about a received value.
 
@@ -178,52 +232,68 @@ type Cancellation
 - `priority` returns the given priority of the data.
 -}
 type alias Snapshot =
-  { subscription: Subscription
-  , key: String
-  , reference: Reference
-  , existing: Bool
-  , value: JE.Value
-  , prevKey: Maybe String
-  , priority: Priority
-  , intern_: SnapshotFB
-  }
+    { subscription : Subscription
+    , key : String
+    , reference : Reference
+    , existing : Bool
+    , value : JE.Value
+    , prevKey : Maybe String
+    , priority : Priority
+    , intern_ : SnapshotFB
+    }
+
+
 
 {- A Firebase snapshot as an internally used JS object -}
-type SnapshotFB = SnapshotFB
 
-{-| Possible return values for update functions of a transaction -}
+
+type SnapshotFB
+    = SnapshotFB
+
+
+{-| Possible return values for update functions of a transaction
+-}
 type Action
-  = Abort
-  | Remove
-  | Set JE.Value
+    = Abort
+    | Remove
+    | Set JE.Value
+
 
 {-| Construct a new location from a full Firebase URL.
 
     loc = fromUrl "https://elmfire.firebaseio-demo.com/foo/bar"
 -}
 fromUrl : String -> Location
-fromUrl = UrlLocation
+fromUrl =
+    UrlLocation
+
 
 {-| Construct a location for the descendant at the specified relative path.
 
     locUsers = sub "users" loc
 -}
 sub : String -> Location -> Location
-sub = SubLocation
+sub =
+    SubLocation
+
 
 {-| Construct the parent location from a child location.
 
     loc2 = parent loc1
 -}
 parent : Location -> Location
-parent = ParentLocation
+parent =
+    ParentLocation
+
 
 {-| Construct the root location from descendant location
 
     loc2 = root loc1
 -}
 root : Location -> Location
-root = RootLocation
+root =
+    RootLocation
+
 
 {-| Construct a new child location using a to-be-generated key.
 
@@ -238,18 +308,25 @@ and get its name.
     set val (push loc) `andThen` (\ref -> ... key ref ...)
 -}
 push : Location -> Location
-push = PushLocation
+push =
+    PushLocation
+
 
 {-| Obtain a location from a reference.
 
     reference = location loc
 -}
 location : Reference -> Location
-location = RefLocation
+location =
+    RefLocation
 
-{-| Get the url of a reference. -}
+
+{-| Get the url of a reference.
+-}
 toUrl : Reference -> String
-toUrl = Native.ElmFire.toUrl
+toUrl =
+    Native.ElmFire.toUrl
+
 
 {-| Get the key of a reference.
 
@@ -257,7 +334,9 @@ The last token in a Firebase location is considered its key.
 It's the empty string for the root.
 -}
 key : Reference -> String
-key = Native.ElmFire.key
+key =
+    Native.ElmFire.key
+
 
 {-| Actually open a location, which results in a reference
 (if the location is valid).
@@ -272,7 +351,9 @@ The task fails if the location construct is invalid.
       `andThen` (\ref -> Signal.send userRefCache.address (user, ref))
 -}
 open : Location -> Task Error Reference
-open = Native.ElmFire.open
+open =
+    Native.ElmFire.open
+
 
 {-| Write a Json value to a Firebase location.
 
@@ -282,17 +363,23 @@ The task may result in an error if the location is invalid
 or you have no permission to write this data.
 -}
 set : JE.Value -> Location -> Task Error Reference
-set = Native.ElmFire.set False
+set =
+    Native.ElmFire.set False
+
 
 {-| Write a Json value to a Firebase location and specify a priority for that data.
 -}
 setWithPriority : JE.Value -> Priority -> Location -> Task Error Reference
-setWithPriority = Native.ElmFire.setWithPriority False
+setWithPriority =
+    Native.ElmFire.setWithPriority False
+
 
 {-| Set a priority for the data at a Firebase location.
 -}
 setPriority : Priority -> Location -> Task Error Reference
-setPriority = Native.ElmFire.setPriority
+setPriority =
+    Native.ElmFire.setPriority
+
 
 {-| Write the children in a Json value to a Firebase location.
 
@@ -302,7 +389,9 @@ and will leave others untouched.
 It is also possible to do atomic multi-location updates as documented [here](https://www.firebase.com/blog/2015-09-24-atomic-writes-and-more.html).
 -}
 update : JE.Value -> Location -> Task Error Reference
-update = Native.ElmFire.update False
+update =
+    Native.ElmFire.update False
+
 
 {-| Delete a Firebase location.
 
@@ -312,7 +401,9 @@ The task may result in an error if the location is invalid
 or you have no permission to remove this data.
 -}
 remove : Location -> Task Error Reference
-remove = Native.ElmFire.remove False
+remove =
+    Native.ElmFire.remove False
+
 
 {-| Transaction: Atomically modify the data at a location
 
@@ -325,36 +416,48 @@ On success the task returns a tuple:
 Its first element indicates whether the transaction was commited (True) or aborted (False).
 Regardless, the second element is a Snapshot containing the resulting data at that location.
 -}
-transaction : (Maybe JE.Value -> Action)
-           -> Location
-           -> Bool
-           -> Task Error (Bool, Snapshot)
-transaction = Native.ElmFire.transaction
+transaction :
+    (Maybe JE.Value -> Action)
+    -> Location
+    -> Bool
+    -> Task Error ( Bool, Snapshot )
+transaction =
+    Native.ElmFire.transaction
+
 
 {-| Queue a `set` operation on the server that get executed as soon as the client disconnects.
 -}
 onDisconnectSet : JE.Value -> Location -> Task Error ()
-onDisconnectSet = Native.ElmFire.set True
+onDisconnectSet =
+    Native.ElmFire.set True
+
 
 {-| Queue a `setWithPriority` operation on the server that get executed as soon as the client disconnects.
 -}
 onDisconnectSetWithPriority : JE.Value -> Priority -> Location -> Task Error ()
-onDisconnectSetWithPriority = Native.ElmFire.setWithPriority True
+onDisconnectSetWithPriority =
+    Native.ElmFire.setWithPriority True
+
 
 {-| Queue a `update` operation on the server that get executed as soon as the client disconnects.
 -}
 onDisconnectUpdate : JE.Value -> Location -> Task Error ()
-onDisconnectUpdate = Native.ElmFire.update True
+onDisconnectUpdate =
+    Native.ElmFire.update True
+
 
 {-| Queue a `remove` operation on the server that get executed as soon as the client disconnects.
 -}
 onDisconnectRemove : Location -> Task Error ()
-onDisconnectRemove = Native.ElmFire.remove True
+onDisconnectRemove =
+    Native.ElmFire.remove True
+
 
 {-| Cancels all previously queued operations for this location and all children.
 -}
 onDisconnectCancel : Location -> Task Error ()
-onDisconnectCancel = Native.ElmFire.onDisconnectCancel
+onDisconnectCancel =
+    Native.ElmFire.onDisconnectCancel
 
 
 {-| Query a Firebase location by subscription
@@ -376,29 +479,40 @@ Additionally, this parameter may also specify ordering, filtering and limiting o
 
 The fourth parameter specifies the location to be queried.
 -}
-subscribe : (Snapshot -> Task x a)
-         -> (Cancellation -> Task y b)
-         -> Query
-         -> Location
-         -> Task Error Subscription
+subscribe :
+    (Snapshot -> Task x a)
+    -> (Cancellation -> Task y b)
+    -> Query
+    -> Location
+    -> Task Error Subscription
 subscribe createResponseTask =
-  subscribeConditional (Just << createResponseTask)
+    subscribeConditional (Just << createResponseTask)
+
+
 
 {- Query a Firebase location by subscription with optional reaction
 
-Similar to `subscribe` except that the function given as the first parameter
-can decide whether to run a task or not.
+   Similar to `subscribe` except that the function given as the first parameter
+   can decide whether to run a task or not.
 -}
-subscribeConditional : (Snapshot -> Maybe (Task x a))
-         -> (Cancellation -> Task y b)
-         -> Query
-         -> Location
-         -> Task Error Subscription
-subscribeConditional = Native.ElmFire.subscribeConditional
 
-{-| Cancel a query subscription -}
+
+subscribeConditional :
+    (Snapshot -> Maybe (Task x a))
+    -> (Cancellation -> Task y b)
+    -> Query
+    -> Location
+    -> Task Error Subscription
+subscribeConditional =
+    Native.ElmFire.subscribeConditional
+
+
+{-| Cancel a query subscription
+-}
 unsubscribe : Subscription -> Task Error ()
-unsubscribe = Native.ElmFire.unsubscribe
+unsubscribe =
+    Native.ElmFire.unsubscribe
+
 
 {-| Query a Firebase location for exactly one event of the specified type
 
@@ -417,119 +531,182 @@ Additionally, this parameter may also specify ordering, filtering and limiting o
 The second parameter specifies the location to be queried.
 -}
 once : Query -> Location -> Task Error Snapshot
-once = Native.ElmFire.once
+once =
+    Native.ElmFire.once
 
-{-| A query specification: event type, possibly ordering with filtering and limiting -}
+
+{-| A query specification: event type, possibly ordering with filtering and limiting
+-}
 type Query
-  = ValueChanged OrderOptions
-  | ChildAdded OrderOptions
-  | ChildChanged OrderOptions
-  | ChildRemoved OrderOptions
-  | ChildMoved OrderOptions
+    = ValueChanged OrderOptions
+    | ChildAdded OrderOptions
+    | ChildChanged OrderOptions
+    | ChildRemoved OrderOptions
+    | ChildMoved OrderOptions
 
-{-| Build a query with event type "value changed" -}
+
+{-| Build a query with event type "value changed"
+-}
 valueChanged : OrderOptions -> Query
-valueChanged = ValueChanged
+valueChanged =
+    ValueChanged
 
-{-| Build a query with event type "child added" -}
+
+{-| Build a query with event type "child added"
+-}
 childAdded : OrderOptions -> Query
-childAdded   = ChildAdded
+childAdded =
+    ChildAdded
 
-{-| Build a query with event type "child changed" -}
+
+{-| Build a query with event type "child changed"
+-}
 childChanged : OrderOptions -> Query
-childChanged = ChildChanged
+childChanged =
+    ChildChanged
 
-{-| Build a query with event type "child removed" -}
+
+{-| Build a query with event type "child removed"
+-}
 childRemoved : OrderOptions -> Query
-childRemoved = ChildRemoved
+childRemoved =
+    ChildRemoved
 
-{-| Build a query with event type "child moved" -}
+
+{-| Build a query with event type "child moved"
+-}
 childMoved : OrderOptions -> Query
-childMoved   = ChildMoved
+childMoved =
+    ChildMoved
 
-{-| Type to specify ordering, filtering and limiting of queries -}
+
+{-| Type to specify ordering, filtering and limiting of queries
+-}
 type OrderOptions
- = NoOrder
- | OrderByChild String (RangeOptions JE.Value) LimitOptions
- | OrderByValue (RangeOptions JE.Value) LimitOptions
- | OrderByKey (RangeOptions String) LimitOptions
- | OrderByPriority (RangeOptions (Priority, Maybe String)) LimitOptions
+    = NoOrder
+    | OrderByChild String (RangeOptions JE.Value) LimitOptions
+    | OrderByValue (RangeOptions JE.Value) LimitOptions
+    | OrderByKey (RangeOptions String) LimitOptions
+    | OrderByPriority (RangeOptions ( Priority, Maybe String )) LimitOptions
 
-{-| Type to specify filtering options for the use within an ordered query -}
+
+{-| Type to specify filtering options for the use within an ordered query
+-}
 type RangeOptions t
- = NoRange
- | StartAt t
- | EndAt t
- | Range t t
- | EqualTo t
+    = NoRange
+    | StartAt t
+    | EndAt t
+    | Range t t
+    | EqualTo t
 
-{-| Type to specify limiting the size of the query result set. Used within an ordered query -}
+
+{-| Type to specify limiting the size of the query result set. Used within an ordered query
+-}
 type LimitOptions
- = NoLimit
- | LimitToFirst Int
- | LimitToLast Int
+    = NoLimit
+    | LimitToFirst Int
+    | LimitToLast Int
 
-{-| Don't order results -}
+
+{-| Don't order results
+-}
 noOrder : OrderOptions
-noOrder = NoOrder
+noOrder =
+    NoOrder
+
 
 {-| Order results by the value of a given child
 (or deep child, as documented [here](https://www.firebase.com/blog/2015-09-24-atomic-writes-and-more.html))
 -}
 orderByChild : String -> RangeOptions JE.Value -> LimitOptions -> OrderOptions
-orderByChild = OrderByChild
+orderByChild =
+    OrderByChild
 
-{-| Order results by value -}
+
+{-| Order results by value
+-}
 orderByValue : RangeOptions JE.Value -> LimitOptions -> OrderOptions
-orderByValue = OrderByValue
+orderByValue =
+    OrderByValue
 
-{-| Order results by key -}
+
+{-| Order results by key
+-}
 orderByKey : RangeOptions String -> LimitOptions -> OrderOptions
-orderByKey = OrderByKey
+orderByKey =
+    OrderByKey
 
-{-| Order results by priority (and maybe secondary by key) -}
-orderByPriority : RangeOptions (Priority, Maybe String) -> LimitOptions -> OrderOptions
-orderByPriority = OrderByPriority
 
-{-| Don't filter the ordered results -}
+{-| Order results by priority (and maybe secondary by key)
+-}
+orderByPriority : RangeOptions ( Priority, Maybe String ) -> LimitOptions -> OrderOptions
+orderByPriority =
+    OrderByPriority
+
+
+{-| Don't filter the ordered results
+-}
 noRange : RangeOptions t
-noRange = NoRange
+noRange =
+    NoRange
+
 
 {-| Filter the ordered results to start at a given value.
 
-The type of the value depends on the order criterium -}
+The type of the value depends on the order criterium
+-}
 startAt : t -> RangeOptions t
-startAt = StartAt
+startAt =
+    StartAt
+
 
 {-| Filter the ordered results to end at a given value.
 
-The type of the value depends on the order criterium -}
+The type of the value depends on the order criterium
+-}
 endAt : t -> RangeOptions t
-endAt = EndAt
+endAt =
+    EndAt
+
 
 {-| Filter the ordered results to start at a given value and to end at another value.
 
-The type of the value depends on the order criterium -}
+The type of the value depends on the order criterium
+-}
 range : t -> t -> RangeOptions t
-range = Range
+range =
+    Range
+
 
 {-| Filter the ordered results to equal a given value.
 
-The type of the value depends on the order criterium -}
+The type of the value depends on the order criterium
+-}
 equalTo : t -> RangeOptions t
-equalTo = EqualTo
+equalTo =
+    EqualTo
 
-{-| Don't limit the number of children in the result set of an ordered query -}
+
+{-| Don't limit the number of children in the result set of an ordered query
+-}
 noLimit : LimitOptions
-noLimit = NoLimit
+noLimit =
+    NoLimit
 
-{-| Limit the result set of an ordered query to the first certain number of children. -}
+
+{-| Limit the result set of an ordered query to the first certain number of children.
+-}
 limitToFirst : Int -> LimitOptions
-limitToFirst = LimitToFirst
+limitToFirst =
+    LimitToFirst
 
-{-| Limit the result set of an ordered query to the last certain number of children. -}
+
+{-| Limit the result set of an ordered query to the last certain number of children.
+-}
 limitToLast : Int -> LimitOptions
-limitToLast = LimitToLast
+limitToLast =
+    LimitToLast
+
 
 {-| Convert a snapshot's children into a list of snapshots
 
@@ -538,19 +715,30 @@ So, if the snapshot results from a ordered valueChanged-query
 then toSnapshotList allows for conserving this ordering as a list.
 -}
 toSnapshotList : Snapshot -> List Snapshot
-toSnapshotList = Native.ElmFire.toSnapshotList
+toSnapshotList =
+    Native.ElmFire.toSnapshotList
 
-{-| Convert a snapshot's children into a list of its values -}
+
+{-| Convert a snapshot's children into a list of its values
+-}
 toValueList : Snapshot -> List JE.Value
-toValueList = Native.ElmFire.toValueList
+toValueList =
+    Native.ElmFire.toValueList
 
-{-| Convert a snapshot's children into a list of its keys -}
+
+{-| Convert a snapshot's children into a list of its keys
+-}
 toKeyList : Snapshot -> List String
-toKeyList = Native.ElmFire.toKeyList
+toKeyList =
+    Native.ElmFire.toKeyList
 
-{-| Convert a snapshot's children into a list of key-value-pairs -}
-toPairList : Snapshot -> List (String, JE.Value)
-toPairList = Native.ElmFire.toPairList
+
+{-| Convert a snapshot's children into a list of key-value-pairs
+-}
+toPairList : Snapshot -> List ( String, JE.Value )
+toPairList =
+    Native.ElmFire.toPairList
+
 
 {-| Exports the entire contents of a Snapshot as a JavaScript object.
 
@@ -558,47 +746,71 @@ This is similar to .value except priority information is included (if available)
 making it suitable for backing up your data.
 -}
 exportValue : Snapshot -> JE.Value
-exportValue = Native.ElmFire.exportValue
+exportValue =
+    Native.ElmFire.exportValue
+
 
 {-| Manually disconnect the client from the server
-and disables automatic reconnection. -}
+and disables automatic reconnection.
+-}
 goOffline : Task x ()
-goOffline = Native.ElmFire.setOffline True
+goOffline =
+    Native.ElmFire.setOffline True
+
 
 {-| Manually reestablish a connection to the server
-and enables automatic reconnection. -}
-goOnline  : Task x ()
-goOnline = Native.ElmFire.setOffline False
+and enables automatic reconnection.
+-}
+goOnline : Task x ()
+goOnline =
+    Native.ElmFire.setOffline False
 
-{-| Subscribe to connection state changes -}
-subscribeConnected : (Bool -> Task x a)
-         -> Location
-         -> Task Error Subscription
+
+{-| Subscribe to connection state changes
+-}
+subscribeConnected :
+    (Bool -> Task x a)
+    -> Location
+    -> Task Error Subscription
 subscribeConnected createResponseTask location =
-  subscribeConditional
-    ( \snapshot -> case JD.decodeValue JD.bool snapshot.value of
-        Ok state -> Just (createResponseTask state)
-        Err _    -> Nothing
-    )
-    (always (Task.succeed ()))
-    (valueChanged noOrder)
-    (location |> root |> sub ".info/connected")
+    subscribeConditional
+        (\snapshot ->
+            case JD.decodeValue JD.bool snapshot.value of
+                Ok state ->
+                    Just (createResponseTask state)
 
-{-| Subscribe to server time offset -}
-subscribeServerTimeOffset : (Time -> Task x a)
-         -> Location
-         -> Task Error Subscription
+                Err _ ->
+                    Nothing
+        )
+        (always (Task.succeed ()))
+        (valueChanged noOrder)
+        (location |> root |> sub ".info/connected")
+
+
+{-| Subscribe to server time offset
+-}
+subscribeServerTimeOffset :
+    (Time -> Task x a)
+    -> Location
+    -> Task Error Subscription
 subscribeServerTimeOffset createResponseTask location =
-  subscribeConditional
-    ( \snapshot -> case JD.decodeValue JD.float snapshot.value of
-        Ok offset -> Just (createResponseTask (offset * Time.millisecond))
-        Err _     -> Nothing
-    )
-    (always (Task.succeed ()))
-    (valueChanged noOrder)
-    (location |> root |> sub ".info/serverTimeOffset")
+    subscribeConditional
+        (\snapshot ->
+            case JD.decodeValue JD.float snapshot.value of
+                Ok offset ->
+                    Just (createResponseTask (offset * Time.millisecond))
+
+                Err _ ->
+                    Nothing
+        )
+        (always (Task.succeed ()))
+        (valueChanged noOrder)
+        (location |> root |> sub ".info/serverTimeOffset")
+
 
 {-| A placeholder value for auto-populating the current timestamp
-(time since the Unix epoch, in milliseconds) by the Firebase servers -}
+(time since the Unix epoch, in milliseconds) by the Firebase servers
+-}
 serverTimeStamp : JE.Value
-serverTimeStamp = Native.ElmFire.serverTimeStamp
+serverTimeStamp =
+    Native.ElmFire.serverTimeStamp
