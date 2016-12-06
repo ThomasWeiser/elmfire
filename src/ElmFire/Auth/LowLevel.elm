@@ -1,4 +1,4 @@
-module ElmFire.Auth exposing
+module ElmFire.Auth.LowLevel exposing
   ( Authentication
   , getAuth, subscribeAuth, unsubscribeAuth
   , Identification
@@ -36,7 +36,7 @@ Therefore, only the root of the `Location` parameter is relevant.
 
 import Native.Firebase
 import Native.ElmFire.Auth
-import ElmFire exposing (Location, Reference, Error)
+import ElmFire.LowLevel exposing (Location, Reference, Error)
 
 import Date exposing (Date)
 import Json.Encode as JE

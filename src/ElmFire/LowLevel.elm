@@ -1,4 +1,4 @@
-module ElmFire exposing
+module ElmFire.LowLevel exposing
   ( Location
   , fromUrl, sub, parent, root, push
   , Reference
