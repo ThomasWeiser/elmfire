@@ -1,25 +1,9 @@
 /* @flow */
 /* global Elm, Firebase, F2, F3, F4 */
 
-Elm.Native.ElmFire = Elm.Native.ElmFire || {};
-Elm.Native.ElmFire.Auth = {};
-Elm.Native.ElmFire.Auth.make = function (localRuntime) {
-  "use strict";
+var _ThomasWeiser$elmfire$Native_ElmFire_Auth = function () {
 
-  localRuntime.Native = localRuntime.Native || {};
-  localRuntime.Native.ElmFire = localRuntime.Native.ElmFire || {};
-  localRuntime.Native.ElmFire.Auth = localRuntime.Native.ElmFire.Auth || {};
-  if (localRuntime.Native.ElmFire.Auth.values) {
-    return localRuntime.Native.ElmFire.Auth.values;
-  }
-
-  var Utils = Elm.Native.Utils.make (localRuntime);
-  var Task = Elm.Native.Task.make (localRuntime);
-
-  var Date = Elm.Date.make (localRuntime);
-  var Time = Elm.Time.make (localRuntime);
-
-  var ElmFire = Elm.Native.ElmFire.make (localRuntime);
+  var ElmFire = _ThomasWeiser$elmfire$Native_ElmFire;
   var asMaybe = ElmFire.asMaybe;
   var getRef = ElmFire.getRef;
   var pleaseReportThis = ElmFire.pleaseReportThis;
@@ -72,11 +56,11 @@ Elm.Native.ElmFire.Auth.make = function (localRuntime) {
   }
 
   function fbAuthTaskFail (fbAuthError) {
-    return Task .fail (fbAuthTaskError (fbAuthError));
+    return _elm_lang$core$Native_Scheduler .fail (fbAuthTaskError (fbAuthError));
   }
 
-  function exAuthTaskFail (exception) {
-    return Task.fail (authError2elm ('OtherAuthenticationError', exception.toString ()));
+  function exceptionAuthTaskFail (exception) {
+    return _elm_lang$core$Native_Scheduler.fail (authError2elm ('OtherAuthenticationError', exception.toString ()));
   }
 
   function auth2elm (fbAuth) {
@@ -88,7 +72,7 @@ Elm.Native.ElmFire.Auth.make = function (localRuntime) {
       uid: fbAuth .uid,
       provider: fbAuth .provider,
       token: fbAuth .token,
-      expires: Date .fromTime (fbAuth .expires * Time .second),
+      expires: _elm_lang$core$Date$fromTime (fbAuth .expires * _elm_lang$core$Date$second),
       auth: JSON .parse (JSON .stringify (fbAuth .auth)),
       specifics: specifics
     };
@@ -103,57 +87,57 @@ Elm.Native.ElmFire.Auth.make = function (localRuntime) {
   }
 
   function onAuthCallback (fbAuth) {
-    Task .perform (this.createResponseTask (maybeAuth2elm (fbAuth)));
+    _elm_lang$core$Native_Scheduler .rawSpawn (this.createResponseTask (maybeAuth2elm (fbAuth)));
   }
 
   function subscribeAuth (createResponseTask, location) {
-    return Task .asyncFunction (function (callback) {
+    return _elm_lang$core$Native_Scheduler .nativeBinding (function (callback) {
       var ref = getRef (location, callback);
       if (ref) {
         var context = { createResponseTask: createResponseTask };
         try { ref.onAuth (onAuthCallback, context); }
         catch (exception) {
-          callback (exAuthTaskFail (exception));
+          callback (exceptionAuthTaskFail (exception));
           return;
         }
-        callback (Task.succeed (Utils.Tuple0));
+        callback (_elm_lang$core$Native_Scheduler.succeed (_elm_lang$core$Native_Utils.Tuple0));
       }
     });
   }
 
   function unsubscribeAuth (location) {
-    return Task .asyncFunction (function (callback) {
+    return _elm_lang$core$Native_Scheduler .nativeBinding (function (callback) {
       var ref = getRef (location, callback);
       if (ref) {
         try {
           ref.offAuth (onAuthCallback);
         }
         catch (exception) {
-          callback (exAuthTaskFail (exception));
+          callback (exceptionAuthTaskFail (exception));
           return;
         }
-        callback (Task.succeed (Utils.Tuple0));
+        callback (_elm_lang$core$Native_Scheduler.succeed (_elm_lang$core$Native_Utils.Tuple0));
       }
     });
   }
 
   function getAuth (location) {
-    return Task .asyncFunction (function (callback) {
+    return _elm_lang$core$Native_Scheduler .nativeBinding (function (callback) {
       var ref = getRef (location, callback);
       if (ref) {
         var auth;
         try { auth = ref .getAuth (); }
         catch (exception) {
-          callback (exAuthTaskFail (exception));
+          callback (exceptionAuthTaskFail (exception));
           return;
         }
-        callback (Task.succeed (maybeAuth2elm (auth)));
+        callback (_elm_lang$core$Native_Scheduler.succeed (maybeAuth2elm (auth)));
       }
     });
   }
 
   function authenticate (location, listOfOptions, id) {
-    return Task .asyncFunction (function (callback) {
+    return _elm_lang$core$Native_Scheduler .nativeBinding (function (callback) {
       var ref = getRef (location, callback);
       if (ref) {
         var options = toObject (listOfOptions);
@@ -161,7 +145,7 @@ Elm.Native.ElmFire.Auth.make = function (localRuntime) {
           if (err) {
             callback (fbAuthTaskFail (err));
           } else {
-            callback (Task.succeed (auth2elm (auth)));
+            callback (_elm_lang$core$Native_Scheduler.succeed (auth2elm (auth)));
           }
         };
         try {
@@ -190,34 +174,34 @@ Elm.Native.ElmFire.Auth.make = function (localRuntime) {
             default: throw ('Bad identification tag.' + pleaseReportThis);
           }
         }
-        catch (exception) { callback (exAuthTaskFail (exception)); }
+        catch (exception) { callback (exceptionAuthTaskFail (exception)); }
       }
     });
   }
 
   function unauthenticate (location) {
-    return Task .asyncFunction (function (callback) {
+    return _elm_lang$core$Native_Scheduler .nativeBinding (function (callback) {
       var ref = getRef (location);
       if (ref) {
         try { ref.unauth (); }
         catch (exception) {
-          callback (exAuthTaskFail (exception));
+          callback (exceptionAuthTaskFail (exception));
           return;
         }
-        callback (Task.succeed (Utils.Tuple0));
+        callback (_elm_lang$core$Native_Scheduler.succeed (_elm_lang$core$Native_Utils.Tuple0));
       }
     });
   }
 
   function userOperation (location, op) {
-    return Task .asyncFunction (function (callback) {
+    return _elm_lang$core$Native_Scheduler .nativeBinding (function (callback) {
       var ref = getRef (location, callback);
       if (ref) {
         var onComplete = function (err, res) {
           if (err) {
             callback (fbAuthTaskFail (err));
           } else {
-            callback (Task.succeed (asMaybe (res && res.uid)));
+            callback (_elm_lang$core$Native_Scheduler.succeed (asMaybe (res && res.uid)));
           }
         };
         try {
@@ -240,17 +224,17 @@ Elm.Native.ElmFire.Auth.make = function (localRuntime) {
             default: throw ('Bad user operation tag.' + pleaseReportThis);
           }
         }
-        catch (exception) { callback (exAuthTaskFail (exception)); }
+        catch (exception) { callback (exceptionAuthTaskFail (exception)); }
       }
     });
   }
 
-  return localRuntime.Native.ElmFire.Auth.values =
-  { 	subscribeAuth: F2 (subscribeAuth)
+  return {
+      subscribeAuth: F2 (subscribeAuth)
     ,	unsubscribeAuth: unsubscribeAuth
     ,	getAuth: getAuth
     , authenticate: F3 (authenticate)
     , unauthenticate: unauthenticate
     , userOperation: F2 (userOperation)
   };
-};
+} ();
