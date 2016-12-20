@@ -1,4 +1,4 @@
-module ElmFire.Types exposing (LocationSpec)
+module ElmFire.Types exposing (..)
 
 {- Internal representation of locations
 
@@ -12,3 +12,7 @@ module ElmFire.Types exposing (LocationSpec)
 
 type alias LocationSpec =
     List ( String, String )
+
+
+type Location
+    = Location LocationSpec

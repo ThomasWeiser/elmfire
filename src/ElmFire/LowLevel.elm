@@ -181,8 +181,8 @@ A location can be constructed or obtained from
 Locations are generally unvalidated until their use in a task.
 The constructor functions are pure.
 -}
-type Location
-    = Location LocationSpec
+type alias Location =
+    ElmFire.Types.Location
 
 
 

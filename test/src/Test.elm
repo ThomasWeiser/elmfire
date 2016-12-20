@@ -57,6 +57,7 @@ type LogEntry
     = LogString String
     | LogStep String
     | LogSnapshot LL.Snapshot
+    | LogResponse Response
 
 
 type Action
@@ -216,7 +217,7 @@ update action model =
 
         SubResponse response ->
             model
-                |> display (LogString "got subscription response: (...TODO) ")
+                |> display (LogResponse response)
                 |> noticeResponse response
 
         Timeout timeoutStep ->
@@ -261,7 +262,7 @@ updateStep step model =
             )
 
         Subscribe ->
-            { model | subs = [ ElmFire.valueChanged (SubResponse << ValueChanged) ] }
+            { model | subs = [ ElmFire.valueChanged testLocation (SubResponse << ValueChanged) ] }
                 |> display (LogStep "Subscribing to valueChanges")
                 |> await 4000 1 responseIsValueChanged Timeout1 CheckResponse1
 
@@ -408,6 +409,9 @@ viewLogEntry entry =
         LogSnapshot snapshot ->
             viewSnapshot snapshot
 
+        LogResponse response ->
+            viewResponse response
+
 
 viewSnapshot : LL.Snapshot -> Html Action
 viewSnapshot { key, existing, value, prevKey, priority } =
@@ -430,6 +434,19 @@ viewSnapshot { key, existing, value, prevKey, priority } =
                 , td [] [ text (toString priority) ]
                 ]
             ]
+        ]
+
+
+viewResponse : Response -> Html Action
+viewResponse (ValueChanged result) =
+    div []
+        [ text "Response"
+        , case result of
+            Err error ->
+                viewError error
+
+            Ok snapshot ->
+                viewSnapshot snapshot
         ]
 
 

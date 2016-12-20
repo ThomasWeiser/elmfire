@@ -10,88 +10,77 @@ First sketch of an ElmFire effect module.
 Simplifications:
 * Only valueChanged events
 * No query options
-* Fixed Firebase location
-
-Notes:
-* Doesn't spawn a process like most other effect modules do. Ok?
 
 @docs valueChanged
 -}
 
--- import Dict
 -- import Process
 -- import Json.Decode as JD
+-- import Dict exposing (Dict)
 
 import Task exposing (Task)
+import ElmFire.Types exposing (..)
 import ElmFire.LowLevel as LL
+import EffectManager as EM
+
+
+-- Types
+
+
+type alias Spec =
+    LocationSpec
+
+
+type alias Tagger msg =
+    Result LL.Error LL.Snapshot -> msg
+
+
+type alias Handle =
+    LL.Subscription
+
+
+type alias State msg =
+    { currentSubs : EM.CurrentSubs Spec (Tagger msg) Handle
+    }
+
 
 
 -- SUBSCRIPTIONS
 
 
 type MySub msg
-    = ValueChanged
-        -- Location
-        (Result LL.Error LL.Snapshot -> msg)
+    = ValueChanged LocationSpec (Tagger msg)
 
 
 subMap : (a -> b) -> MySub a -> MySub b
 subMap func sub =
     case sub of
-        ValueChanged tagger ->
-            ValueChanged (tagger >> func)
+        ValueChanged location tagger ->
+            ValueChanged location (tagger >> func)
 
 
 {-| Subscribe to valueChanged ...
 -}
 valueChanged :
-    -- Location ->
-    (Result LL.Error LL.Snapshot -> msg)
+    LL.Location
+    -> (Result LL.Error LL.Snapshot -> msg)
     -> Sub msg
-valueChanged tagger =
-    subscription (ValueChanged tagger)
+valueChanged (Location locationSpec) tagger =
+    subscription (ValueChanged locationSpec tagger)
 
 
 
 -- MANAGER
 
 
-type alias State msg =
-    { subs : SubsDict msg
-    }
-
-
-type alias SubsDict msg =
-    -- Dict.Dict Location
-    Maybe (ValueChangedSubscription msg)
-
-
-type alias ValueChangedSubscription msg =
-    { subscribers : List (Result LL.Error LL.Snapshot -> msg)
-    , lowLevelSubscription : LL.Subscription
-    }
-
-
 init : Task Never (State msg)
 init =
     Task.succeed
-        (State
-            -- Dict.empty
-            Nothing
-        )
-
-
-(&>) : Task x a -> Task x b -> Task x b
-(&>) t1 t2 =
-    Task.andThen t1 (\_ -> t2)
+        (State EM.emptySubs)
 
 
 type SelfMsg
-    = NewSnapshot LL.Snapshot
-
-
-
---   NewLowLevelSub Subscription
+    = NewSnapshot LocationSpec LL.Snapshot
 
 
 onEffects :
@@ -100,63 +89,87 @@ onEffects :
     -> State msg
     -> Task Never (State msg)
 onEffects router mySubs state =
-    case ( mySubs, state.subs ) of
-        ( [], Nothing ) ->
-            Task.succeed state
+    let
+        requestedSubs =
+            EM.requestedSubsFromList
+                (\(ValueChanged spec tagger) -> ( spec, tagger ))
+                mySubs
 
-        ( [], Just { subscribers, lowLevelSubscription } ) ->
-            LL.unsubscribe lowLevelSubscription
-                |> Task.map
-                    (\_ -> { subs = Nothing })
-                |> (flip Task.onError)
-                    (\llError ->
-                        Task.succeed { subs = Nothing }
-                     -- TODO: Handle error
-                    )
+        alterations =
+            EM.alterations requestedSubs state.currentSubs
 
-        ( _ :: _, Nothing ) ->
-            (LL.subscribe
-                (\snapshot -> Platform.sendToSelf router (NewSnapshot snapshot))
-                (\cancellation -> Task.succeed ())
-                -- TODO: Handle cancellation
-                (LL.valueChanged LL.noOrder)
-                (LL.fromUrl "https://elmfiretest.firebaseio.com/test")
-            )
-                |> Task.map
-                    (\lowLevelSubscription ->
-                        { subs =
-                            Just
-                                { subscribers = buildSubscriberList mySubs
-                                , lowLevelSubscription = lowLevelSubscription
+        onAlteration :
+            EM.Alteration LocationSpec (Tagger msg) LL.Subscription
+            -> State msg
+            -> Task Never (State msg)
+        onAlteration alteration state =
+            case alteration of
+                EM.Create locationSpec taggers ->
+                    LL.subscribe
+                        (\snapshot -> Platform.sendToSelf router (NewSnapshot locationSpec snapshot))
+                        (\cancellation -> Task.succeed ())
+                        -- TODO: Handle cancellation
+                        (LL.valueChanged LL.noOrder)
+                        (Location locationSpec)
+                        |> Task.map
+                            (\lowLevelSub ->
+                                { currentSubs =
+                                    EM.insertSub locationSpec taggers lowLevelSub state.currentSubs
                                 }
+                            )
+                        |> (flip Task.onError)
+                            (\llError ->
+                                Task.succeed state
+                             -- TODO: Handle error
+                            )
+
+                EM.Update locationSpec lowLevelSub taggers ->
+                    Task.succeed
+                        { currentSubs =
+                            EM.insertSub locationSpec taggers lowLevelSub state.currentSubs
                         }
-                    )
-                |> (flip Task.onError)
-                    (\llError ->
-                        Task.succeed { subs = Nothing }
-                     -- TODO: Handle error
-                    )
 
-        ( _ :: _, Just { subscribers, lowLevelSubscription } ) ->
-            Task.succeed
-                { subs =
-                    (Just
-                        { subscribers = buildSubscriberList mySubs
-                        , lowLevelSubscription = lowLevelSubscription
-                        }
-                    )
-                }
+                EM.Delete locationSpec lowLevelSub ->
+                    LL.unsubscribe lowLevelSub
+                        |> Task.map
+                            (\_ ->
+                                { currentSubs =
+                                    EM.removeSub locationSpec state.currentSubs
+                                }
+                            )
+                        |> (flip Task.onError)
+                            (\llError ->
+                                Task.succeed state
+                             -- TODO: Handle error
+                            )
+    in
+        alterations
+            |> chain onAlteration state
 
 
-buildSubscriberList : List (MySub msg) -> List (Result LL.Error LL.Snapshot -> msg)
-buildSubscriberList mySubs =
-    List.map
-        (\mySub ->
-            case mySub of
-                ValueChanged tagger ->
-                    tagger
+
+{-
+   chain_Recursive : (a -> b -> Task x b) -> b -> List a -> Task x b
+   chain_Recursive stepTask start list =
+       case list of
+           [] ->
+               Task.succeed start
+
+           elem :: rest ->
+               (stepTask elem start)
+                   `Task.andThen` \stepResult -> chain stepTask stepResult rest
+-}
+
+
+chain : (a -> b -> Task x b) -> b -> List a -> Task x b
+chain step start list =
+    List.foldl
+        (\elem intermediateTask ->
+            intermediateTask
+                `Task.andThen` step elem
         )
-        mySubs
+        (Task.succeed start)
+        list
 
 
 onSelfMsg :
@@ -164,13 +177,13 @@ onSelfMsg :
     -> SelfMsg
     -> State msg
     -> Task Never (State msg)
-onSelfMsg router selfMsg state =
-    case ( selfMsg, state.subs ) of
-        ( _, Nothing ) ->
+onSelfMsg router (NewSnapshot locationSpec snapshot) state =
+    case EM.getSub locationSpec state.currentSubs of
+        Nothing ->
             Task.succeed state
 
-        ( NewSnapshot snapshot, Just { subscribers, lowLevelSubscription } ) ->
-            subscribers
+        Just ( taggers, lowLevelSub ) ->
+            taggers
                 |> List.map (\tagger -> Platform.sendToApp router (tagger (Ok snapshot)))
                 |> Task.sequence
                 |> Task.map (\_ -> state)
