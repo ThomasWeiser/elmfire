@@ -8,8 +8,8 @@
 
 module Main exposing (..)
 
-import Html exposing (Html, div, input, output, label, text, a)
-import Html.Events exposing (on, targetValue)
+import Html exposing (Html, div, input, output, label, text, a, button)
+import Html.Events exposing (on, targetValue, onClick)
 import Html.Attributes exposing (href, target)
 import Html.App
 import Task exposing (Task)
@@ -28,8 +28,15 @@ import ElmFire.LowLevel
         , Snapshot
         , Subscription
         , Error
+        , Location
         )
 import ElmFire
+import ElmFire.Auth.LowLevel
+    exposing
+        ( authenticate
+        , rememberDefault
+        , withPassword
+        )
 
 
 -- Firebase location to access:
@@ -39,6 +46,11 @@ import ElmFire
 firebaseUrl : String
 firebaseUrl =
     "https://elmfire-test.firebaseio.com/example"
+
+
+location : Location
+location =
+    (fromUrl firebaseUrl)
 
 
 main : Program Never
@@ -63,6 +75,7 @@ type Msg
     = Send String
     | Sent (Result Error ())
     | ValueChanged (Result Error Snapshot)
+    | Login
 
 
 init : ( Model, Cmd Msg )
@@ -80,7 +93,7 @@ update msg model =
             , Task.perform
                 (Sent << Err)
                 (Sent << Ok << (always ()))
-                (set (JE.string text) (fromUrl firebaseUrl))
+                (set (JE.string text) location)
             )
 
         Sent result ->
@@ -98,10 +111,18 @@ update msg model =
                 Err _ ->
                     ( model, Cmd.none )
 
+        Login ->
+            ( model
+            , Task.perform
+                (Sent << Err)
+                (Sent << Ok << (always ()))
+                (authenticate location [ rememberDefault ] (withPassword "test@test.com" "123test"))
+            )
+
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    ElmFire.valueChanged (fromUrl firebaseUrl) ValueChanged
+    ElmFire.valueChanged location ValueChanged
 
 
 view : Model -> Html Msg
@@ -121,4 +142,5 @@ view model =
                 , output [] [ text model ]
                 ]
             ]
+        , button [ onClick Login ] [ text "Login" ]
         ]
