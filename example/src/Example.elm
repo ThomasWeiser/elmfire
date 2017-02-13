@@ -29,6 +29,7 @@ import ElmFire.LowLevel
         , Subscription
         , Error
         )
+import ElmFire
 
 
 -- Firebase location to access:
@@ -37,9 +38,10 @@ import ElmFire.LowLevel
 
 firebaseUrl : String
 firebaseUrl =
-    "https://elmfire.firebaseio-demo.com/example"
+    "https://elmfire-test.firebaseio.com/example"
 
 
+main : Program Never
 main =
     Html.App.program
         { init = init
@@ -50,7 +52,7 @@ main =
 
 
 type alias Model =
-    ()
+    String
 
 
 
@@ -60,11 +62,12 @@ type alias Model =
 type Msg
     = Send String
     | Sent (Result Error ())
+    | ValueChanged (Result Error Snapshot)
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( ()
+    ( ""
     , Cmd.none
     )
 
@@ -87,19 +90,35 @@ update msg model =
             in
                 ( model, Cmd.none )
 
+        ValueChanged result ->
+            case result of
+                Ok snapshot ->
+                    ( toString (snapshot.value), Cmd.none )
+
+                Err _ ->
+                    ( model, Cmd.none )
+
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    ElmFire.valueChanged (fromUrl firebaseUrl) ValueChanged
 
 
 view : Model -> Html Msg
 view model =
     div []
-        [ label []
-            [ text "Set value: "
-            , input
-                [ on "input" (JD.map Send targetValue) ]
-                []
+        [ text "ElmFire test at: "
+        , a [ href firebaseUrl, target "_blank" ] [ text firebaseUrl ]
+        , div []
+            [ label []
+                [ text "set value: "
+                , input [ on "input" (JD.map Send targetValue) ] []
+                ]
+            ]
+        , div []
+            [ label []
+                [ text "query result: "
+                , output [] [ text model ]
+                ]
             ]
         ]
