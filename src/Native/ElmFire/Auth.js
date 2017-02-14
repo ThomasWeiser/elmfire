@@ -138,7 +138,8 @@ var _ThomasWeiser$elmfire$Native_ElmFire_Auth = function () {
 
   function authenticate (location, listOfOptions, id) {
     return _elm_lang$core$Native_Scheduler .nativeBinding (function (callback) {
-      var ref = getRef (location, callback);
+      getRef (location, callback);
+      var ref = firebase.auth();
       if (ref) {
         var options = toObject (listOfOptions);
         var onComplete = function (err, auth) {
@@ -154,7 +155,7 @@ var _ThomasWeiser$elmfire$Native_ElmFire_Auth = function () {
               ref.authAnonymously (onComplete, options);
               break;
             case 'Password':
-              ref.authWithPassword ({ email: id._0, password: id._1 }, onComplete, options);
+              ref.signInWithEmailAndPassword (id._0, id._1) .then (onComplete);
               break;
             case 'OAuthPopup':
               ref.authWithOAuthPopup (id._0, onComplete, options);

@@ -77,7 +77,6 @@ var _ThomasWeiser$elmfire$Native_ElmFire = function () {
 
   function getRefStep (locationList) {
     var ref;
-    console.log(locationList);
     if (locationList.ctor === '::') {
       var head = locationList._0;
       var rest = locationList._1;

@@ -53,11 +53,6 @@ location =
     (fromUrl firebaseUrl "example")
 
 
-location : Location
-location =
-    (fromUrl firebaseUrl)
-
-
 main : Program Never
 main =
     Html.App.program
