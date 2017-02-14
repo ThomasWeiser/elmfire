@@ -8,8 +8,8 @@
 
 module Main exposing (..)
 
-import Html exposing (Html, div, input, output, label, text, a)
-import Html.Events exposing (on, targetValue)
+import Html exposing (Html, div, input, output, label, text, a, button)
+import Html.Events exposing (on, targetValue, onClick)
 import Html.Attributes exposing (href, target)
 import Html.App
 import Task exposing (Task)
@@ -28,6 +28,14 @@ import ElmFire.LowLevel
         , Snapshot
         , Subscription
         , Error
+        , Location
+        )
+import ElmFire
+import ElmFire.Auth.LowLevel
+    exposing
+        ( authenticate
+        , rememberDefault
+        , withPassword
         )
 
 
@@ -37,9 +45,15 @@ import ElmFire.LowLevel
 
 firebaseUrl : String
 firebaseUrl =
-    "https://elmfire.firebaseio-demo.com/example"
+    "https://elmfire-test.firebaseio.com/"
 
 
+location : Location
+location =
+    (fromUrl firebaseUrl "example")
+
+
+main : Program Never
 main =
     Html.App.program
         { init = init
@@ -50,7 +64,7 @@ main =
 
 
 type alias Model =
-    ()
+    String
 
 
 
@@ -60,11 +74,13 @@ type alias Model =
 type Msg
     = Send String
     | Sent (Result Error ())
+    | ValueChanged (Result Error Snapshot)
+    | Login
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( ()
+    ( ""
     , Cmd.none
     )
 
@@ -77,7 +93,7 @@ update msg model =
             , Task.perform
                 (Sent << Err)
                 (Sent << Ok << (always ()))
-                (set (JE.string text) (fromUrl firebaseUrl))
+                (set (JE.string text) location)
             )
 
         Sent result ->
@@ -87,19 +103,44 @@ update msg model =
             in
                 ( model, Cmd.none )
 
+        ValueChanged result ->
+            case result of
+                Ok snapshot ->
+                    ( toString (snapshot.value), Cmd.none )
+
+                Err _ ->
+                    ( model, Cmd.none )
+
+        Login ->
+            ( model
+            , Task.perform
+                (Sent << Err)
+                (Sent << Ok << (always ()))
+                (authenticate location [ rememberDefault ] (withPassword "test@test.com" "123test"))
+            )
+
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    ElmFire.valueChanged location ValueChanged
 
 
 view : Model -> Html Msg
 view model =
     div []
-        [ label []
-            [ text "Set value: "
-            , input
-                [ on "input" (JD.map Send targetValue) ]
-                []
+        [ text "ElmFire test at: "
+        , a [ href firebaseUrl, target "_blank" ] [ text firebaseUrl ]
+        , div []
+            [ label []
+                [ text "set value: "
+                , input [ on "input" (JD.map Send targetValue) ] []
+                ]
             ]
+        , div []
+            [ label []
+                [ text "query result: "
+                , output [] [ text model ]
+                ]
+            ]
+        , button [ onClick Login ] [ text "Login" ]
         ]
