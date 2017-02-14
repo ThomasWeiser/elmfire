@@ -10,7 +10,6 @@ module ElmFire.LowLevel
         , open
         , key
         , toUrl
-        , location
         , Priority(..)
         , set
         , setWithPriority
@@ -119,7 +118,6 @@ ElmFire maps the Firebase JavaScript API to Elm functions and tasks.
 -}
 
 import ElmFire.Types exposing (..)
-import Native.Firebase
 import Native.ElmFire
 import Time exposing (Time)
 import Json.Encode as JE
@@ -268,9 +266,9 @@ type Action
 
     loc = fromUrl "https://elmfire.firebaseio-demo.com/foo/bar"
 -}
-fromUrl : String -> Location
-fromUrl url =
-    Location [ ( "url", url ) ]
+fromUrl : String -> String -> Location
+fromUrl url ref =
+    Location [ ( "ref", ref ), ( "url", url ) ]
 
 
 {-| Construct a location for the descendant at the specified relative path.
@@ -315,15 +313,6 @@ and get its name.
 push : Location -> Location
 push (Location list) =
     Location (( "push", "" ) :: list)
-
-
-{-| Obtain a location from a reference.
-
-    reference = location loc
--}
-location : Reference -> Location
-location ref =
-    fromUrl <| Native.ElmFire.toUrl ref
 
 
 {-| Get the url of a reference.

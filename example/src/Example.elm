@@ -45,7 +45,12 @@ import ElmFire.Auth.LowLevel
 
 firebaseUrl : String
 firebaseUrl =
-    "https://elmfire-test.firebaseio.com/example"
+    "https://elmfire-test.firebaseio.com/"
+
+
+location : Location
+location =
+    (fromUrl firebaseUrl "example")
 
 
 location : Location

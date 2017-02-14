@@ -77,12 +77,19 @@ var _ThomasWeiser$elmfire$Native_ElmFire = function () {
 
   function getRefStep (locationList) {
     var ref;
+    console.log(locationList);
     if (locationList.ctor === '::') {
       var head = locationList._0;
       var rest = locationList._1;
       switch (head._0) {
         case 'url':
-          ref = new Firebase (head._1);
+          if (!firebase.apps.length) {
+            firebase.initializeApp({databaseURL: head._1});
+          }
+          ref = firebase.database();
+          break;
+        case 'ref':
+          ref = getRefStep (rest) .ref (head._1);
           break;
         case 'child':
           ref = getRefStep (rest) .child (head._1);
@@ -499,15 +506,15 @@ var _ThomasWeiser$elmfire$Native_ElmFire = function () {
   function setOffline (off) {
     return _elm_lang$core$Native_Scheduler .nativeBinding (function (callback) {
       if (off) {
-        Firebase.goOffline ();
+        firebase.database().goOffline ();
       } else {
-        Firebase.goOnline ();
+        firebase.database().goOnline ();
       }
       callback (_elm_lang$core$Native_Scheduler.succeed (_elm_lang$core$Native_Utils.Tuple0));
     });
   }
 
-  var serverTimeStamp = Firebase.ServerValue.TIMESTAMP;
+  var serverTimeStamp = firebase.database.ServerValue.TIMESTAMP;
 
   return {
     // Values exported to Elm
