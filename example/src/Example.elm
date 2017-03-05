@@ -38,7 +38,7 @@ import ElmFire
 
 firebaseUrl : String
 firebaseUrl =
-    "https://elmfire-test.firebaseio.com/example"
+    "https://elmfiretest.firebaseio.com/example"
 
 
 main : Program Never
