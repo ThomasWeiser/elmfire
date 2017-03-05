@@ -29,6 +29,8 @@ module ElmFire.Auth.LowLevel
 
 {-| Elm bindings to Firebase Authentication.
 
+* Currently out-of-date! Has to be adapted for use with Elm (>0.16) effect manager code *
+
 Note that all tasks in this module refer to a entire Firebase, not a specific path within a Firebase.
 Therefore, only the root of the `Location` parameter is relevant.
 
