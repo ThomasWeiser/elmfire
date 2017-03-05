@@ -48,7 +48,6 @@ Therefore, only the root of the `Location` parameter is relevant.
   createUser, removeUser, changeEmail, changePassword, resetPassword
 -}
 
-import Native.Firebase
 import Native.ElmFire.Auth
 import ElmFire.LowLevel exposing (Location, Reference, Error)
 import Date exposing (Date)

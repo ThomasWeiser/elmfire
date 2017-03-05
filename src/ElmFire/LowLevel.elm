@@ -119,7 +119,6 @@ ElmFire maps the Firebase JavaScript API to Elm functions and tasks.
 -}
 
 import ElmFire.Types exposing (..)
-import Native.Firebase
 import Native.ElmFire
 import Time exposing (Time)
 import Json.Encode as JE
