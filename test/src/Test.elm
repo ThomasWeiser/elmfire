@@ -3,7 +3,6 @@ module Main exposing (..)
 import Array exposing (Array)
 import Html exposing (..)
 import Html.Attributes as HA
-import Html.App as App
 import Task
 import Process
 import Time exposing (Time)
@@ -24,9 +23,9 @@ testLocation =
     LL.fromUrl testUrl
 
 
-main : Program Never
+main : Program Never Model Action
 main =
-    App.program
+    Html.program
         { init = init
         , view = view
         , update = update
@@ -89,7 +88,7 @@ init =
       , waiting = Nothing
       , responses = Nothing
       }
-    , Task.perform
+    , attemptTask
         (\_ -> Fatal "Task Date.now failed. Should never happen.")
         (\date -> Step (SetDate (toString date)))
         Date.now
@@ -98,7 +97,7 @@ init =
 
 next : Action -> Cmd Action
 next action =
-    Task.perform
+    attemptTask
         (\_ -> Debug.crash "Task.succeed failed.")
         identity
         (Task.succeed action)
@@ -111,7 +110,7 @@ nextStep step =
 
 defer : Time -> Action -> Cmd Action
 defer time action =
-    Task.perform
+    attemptTask
         (\_ -> Debug.crash "Process.sleep failed.")
         identity
         (Process.sleep time
@@ -254,7 +253,7 @@ updateStep step model =
 
         Clear ->
             ( model |> display (LogStep "Clear") |> gatherResponses
-            , Task.perform
+            , attemptTask
                 (\error -> Fatal error.description)
                 (\ref -> Step Subscribe)
                 (LL.remove testLocation)
@@ -282,7 +281,7 @@ updateStep step model =
             ( model
                 |> display (LogStep "About to push")
                 |> gatherResponses
-            , Task.perform
+            , attemptTask
                 (\error -> Fatal error.description)
                 (\ref -> Step (Once ref))
                 (LL.set
@@ -295,7 +294,7 @@ updateStep step model =
         Once ref ->
             ( { model | keyPushed = LL.key ref }
                 |> display (LogString ("pushed to: " ++ LL.toUrl ref))
-            , Task.perform
+            , attemptTask
                 (\error -> Fatal error.description)
                 (\snap -> Step (Check snap))
                 (LL.once
@@ -453,3 +452,17 @@ viewResponse (ValueChanged result) =
 viewError : LL.Error -> Html Action
 viewError { description } =
     text description
+
+
+attemptTask : (x -> msg) -> (a -> msg) -> Task.Task x a -> Cmd msg
+attemptTask failureTagger successTagger task =
+    Task.attempt
+        (\result ->
+            case result of
+                Err value ->
+                    failureTagger value
+
+                Ok value ->
+                    successTagger value
+        )
+        task

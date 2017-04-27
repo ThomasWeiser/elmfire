@@ -117,7 +117,7 @@ onEffects router mySubs state =
                                     EM.insertSub locationSpec taggers lowLevelSub state.currentSubs
                                 }
                             )
-                        |> (flip Task.onError)
+                        |> Task.onError
                             (\llError ->
                                 Task.succeed state
                              -- TODO: Handle error
@@ -137,7 +137,7 @@ onEffects router mySubs state =
                                     EM.removeSub locationSpec state.currentSubs
                                 }
                             )
-                        |> (flip Task.onError)
+                        |> Task.onError
                             (\llError ->
                                 Task.succeed state
                              -- TODO: Handle error
@@ -156,8 +156,8 @@ onEffects router mySubs state =
                Task.succeed start
 
            elem :: rest ->
-               (stepTask elem start)
-                   `Task.andThen` \stepResult -> chain stepTask stepResult rest
+               stepTask elem start
+                   |> Task.andThen (\stepResult -> chain stepTask stepResult rest)
 -}
 
 
@@ -166,7 +166,7 @@ chain step start list =
     List.foldl
         (\elem intermediateTask ->
             intermediateTask
-                `Task.andThen` step elem
+                |> Task.andThen (step elem)
         )
         (Task.succeed start)
         list

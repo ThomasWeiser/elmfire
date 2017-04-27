@@ -309,7 +309,7 @@ will be chronologically-sorted.
 You may `open` the location or use `set` to actually generate the key
 and get its name.
 
-    set val (push loc) `andThen` (\ref -> ... key ref ...)
+    set val (push loc) |> andThen (\ref -> ... key ref ...)
 -}
 push : Location -> Location
 push (Location list) =
@@ -352,7 +352,7 @@ The task fails if the location construct is invalid.
 
     openTask =
       (open <| child user <| fromUrl "https://elmfire.firebaseio-demo.com/users")
-      `andThen` (\ref -> Signal.send userRefCache.address (user, ref))
+        |> andThen (\ref -> Signal.send userRefCache.address (user, ref))
 -}
 open : Location -> Task Error Reference
 open =
