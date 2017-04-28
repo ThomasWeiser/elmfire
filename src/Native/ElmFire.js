@@ -1,19 +1,7 @@
 /* @flow */
 /* global Elm, Firebase, F2, F3, F4 */
 
-Elm.Native.ElmFire = {};
-Elm.Native.ElmFire.make = function (localRuntime) {
-  "use strict";
-
-  localRuntime.Native = localRuntime.Native || {};
-  localRuntime.Native.ElmFire = localRuntime.Native.ElmFire || {};
-  if (localRuntime.Native.ElmFire.values) {
-    return localRuntime.Native.ElmFire.values;
-  }
-
-  var Utils = Elm.Native.Utils.make (localRuntime);
-  var Task = Elm.Native.Task.make (localRuntime);
-  var List = Elm.Native.List.make (localRuntime);
+var _ThomasWeiser$elmfire$Native_ElmFire = function () {
 
   var pleaseReportThis = ' Should not happen, please report this as a bug in ElmFire!';
 
@@ -66,15 +54,15 @@ Elm.Native.ElmFire.make = function (localRuntime) {
   }
 
   function fbTaskFail (fbError) {
-    return Task.fail (fbTaskError (fbError));
+    return _elm_lang$core$Native_Scheduler.fail (fbTaskError (fbError));
   }
 
-  function exTaskError (exception) {
+  function exceptionTaskError (exception) {
     return error2elm ('OtherFirebaseError', exception.toString ());
   }
 
-  function exTaskFail (exception) {
-    return Task.fail (exTaskError (exception));
+  function exceptionTaskFail (exception) {
+    return _elm_lang$core$Native_Scheduler.fail (exceptionTaskError (exception));
   }
 
   function onCompleteCallbackRef (callback, res) {
@@ -82,34 +70,36 @@ Elm.Native.ElmFire.make = function (localRuntime) {
       if (err) {
         callback (fbTaskFail (err));
       } else {
-        callback (Task.succeed (res));
+        callback (_elm_lang$core$Native_Scheduler.succeed (res));
       }
     };
   }
 
-  function getRefStep (location) {
+  function getRefStep (locationList) {
     var ref;
-    switch (location.ctor) {
-      case 'UrlLocation':
-        ref = new Firebase (location._0);
-        break;
-      case 'SubLocation':
-        ref = getRefStep (location._1) .child (location._0);
-        break;
-      case 'ParentLocation':
-        ref = getRefStep (location._0) .parent ();
-        if (! ref) { throw ('Error: Root has no parent'); }
-        break;
-      case 'RootLocation':
-        ref = getRefStep (location._0) .root ();
-        break;
-      case 'PushLocation':
-        ref = getRefStep (location._0) .push ();
-        break;
-      case 'RefLocation':
-        ref = location._0;
-        break;
+    if (locationList.ctor === '::') {
+      var head = locationList._0;
+      var rest = locationList._1;
+      switch (head._0) {
+        case 'url':
+          ref = new Firebase (head._1);
+          break;
+        case 'child':
+          ref = getRefStep (rest) .child (head._1);
+          break;
+        case 'parent':
+          ref = getRefStep (rest) .parent ();
+          if (! ref) { throw ('Error: Root has no parent'); }
+          break;
+        case 'root':
+          ref = getRefStep (rest) .root ();
+          break;
+        case 'push':
+          ref = getRefStep (rest) .push ();
+          break;
+      }
     }
+
     if (! ref) {
      throw ('Bad Firebase reference.' + pleaseReportThis);
     }
@@ -119,10 +109,10 @@ Elm.Native.ElmFire.make = function (localRuntime) {
   function getRef (location, failureCallback) {
     var ref;
     try {
-      ref = getRefStep (location);
+      ref = getRefStep (location._0);
     }
     catch (exception) {
-      failureCallback (Task.fail (error2elm ('LocationError', exception.toString ())));
+      failureCallback (_elm_lang$core$Native_Scheduler.fail (error2elm ('LocationError', exception.toString ())));
     }
     return ref;
   }
@@ -140,107 +130,107 @@ Elm.Native.ElmFire.make = function (localRuntime) {
   }
 
   function open (location) {
-    return Task .asyncFunction (function (callback) {
+    return _elm_lang$core$Native_Scheduler .nativeBinding (function (callback) {
       var ref = getRef (location, callback);
       if (ref) {
-        callback (Task.succeed (ref));
+        callback (_elm_lang$core$Native_Scheduler.succeed (ref));
       }
     });
   }
 
   function set (onDisconnect, value, location) {
-    return Task .asyncFunction (function (callback) {
+    return _elm_lang$core$Native_Scheduler .nativeBinding (function (callback) {
       var ref = getRef (location, callback);
       if (ref) {
         var onComplete;
         if (onDisconnect) {
           ref = ref.onDisconnect ();
-          onComplete = onCompleteCallbackRef (callback, Utils.Tuple0);
+          onComplete = onCompleteCallbackRef (callback, _elm_lang$core$Native_Utils.Tuple0);
         } else {
           onComplete = onCompleteCallbackRef (callback, ref)
         }
         try { ref.set (value, onComplete); }
-        catch (exception) { callback (exTaskFail (exception)); }
+        catch (exception) { callback (exceptionTaskFail (exception)); }
       }
     });
   }
 
   function setWithPriority (onDisconnect, value, priority, location) {
-    return Task .asyncFunction (function (callback) {
+    return _elm_lang$core$Native_Scheduler .nativeBinding (function (callback) {
       var ref = getRef (location, callback);
       if (ref) {
         var onComplete;
         if (onDisconnect) {
           ref = ref.onDisconnect ();
-          onComplete = onCompleteCallbackRef (callback, Utils.Tuple0);
+          onComplete = onCompleteCallbackRef (callback, _elm_lang$core$Native_Utils.Tuple0);
         } else {
           onComplete = onCompleteCallbackRef (callback, ref)
         }
         try { ref.setWithPriority (value, priority2fb (priority), onComplete); }
-        catch (exception) { callback (exTaskFail (exception)); }
+        catch (exception) { callback (exceptionTaskFail (exception)); }
       }
     });
   }
 
   function setPriority (priority, location) {
-    return Task .asyncFunction (function (callback) {
+    return _elm_lang$core$Native_Scheduler .nativeBinding (function (callback) {
       var ref = getRef (location, callback);
       if (ref) {
         try {
           ref.setPriority
                 (priority2fb (priority), onCompleteCallbackRef (callback, ref));
         }
-        catch (exception) { callback (exTaskFail (exception)); }
+        catch (exception) { callback (exceptionTaskFail (exception)); }
       }
     });
   }
 
   function update (onDisconnect, value, location) {
-    return Task .asyncFunction (function (callback) {
+    return _elm_lang$core$Native_Scheduler .nativeBinding (function (callback) {
       var ref = getRef (location, callback);
       if (ref) {
         var onComplete;
         if (onDisconnect) {
           ref = ref.onDisconnect ();
-          onComplete = onCompleteCallbackRef (callback, Utils.Tuple0);
+          onComplete = onCompleteCallbackRef (callback, _elm_lang$core$Native_Utils.Tuple0);
         } else {
           onComplete = onCompleteCallbackRef (callback, ref)
         }
         try { ref.update (value, onComplete); }
-        catch (exception) { callback (exTaskFail (exception)); }
+        catch (exception) { callback (exceptionTaskFail (exception)); }
       }
     });
   }
 
   function remove (onDisconnect, location) {
-   return Task .asyncFunction (function (callback) {
+   return _elm_lang$core$Native_Scheduler .nativeBinding (function (callback) {
      var ref = getRef (location, callback);
      if (ref) {
       var onComplete;
       if (onDisconnect) {
         ref = ref.onDisconnect ();
-        onComplete = onCompleteCallbackRef (callback, Utils.Tuple0);
+        onComplete = onCompleteCallbackRef (callback, _elm_lang$core$Native_Utils.Tuple0);
       } else {
         onComplete = onCompleteCallbackRef (callback, ref)
       }
        try { ref.remove (onComplete); }
-       catch (exception) { callback (exTaskFail (exception)); }
+       catch (exception) { callback (exceptionTaskFail (exception)); }
      }
    });
  }
 
   function onDisconnectCancel (location) {
-   return Task .asyncFunction (function (callback) {
+   return _elm_lang$core$Native_Scheduler .nativeBinding (function (callback) {
      var ref = getRef (location, callback);
      if (ref) {
-       try { ref.onDisconnect().cancel (onCompleteCallbackRef (callback, Utils.Tuple0)); }
-       catch (exception) { callback (exTaskFail (exception)); }
+       try { ref.onDisconnect().cancel (onCompleteCallbackRef (callback, _elm_lang$core$Native_Utils.Tuple0)); }
+       catch (exception) { callback (exceptionTaskFail (exception)); }
      }
    });
  }
 
   function transaction (updateFunc, location, applyLocally) {
-    return Task .asyncFunction (function (callback) {
+    return _elm_lang$core$Native_Scheduler .nativeBinding (function (callback) {
       var ref = getRef (location, callback);
       if (ref) {
         var fbUpdateFunc = function (prevVal) {
@@ -257,13 +247,13 @@ Elm.Native.ElmFire.make = function (localRuntime) {
             callback (fbTaskFail (err));
           } else {
             var snapshot = snapshot2elm ('_transaction_', fbSnapshot, null);
-            var res = Utils.Tuple2 (committed, snapshot);
-            callback (Task.succeed (res));
+            var res = _elm_lang$core$Native_Utils.Tuple2 (committed, snapshot);
+            callback (_elm_lang$core$Native_Scheduler.succeed (res));
           }
         };
         try { ref.transaction (fbUpdateFunc, onComplete, applyLocally); }
         catch (exception) {
-          callback (exTaskFail (exception));
+          callback (exceptionTaskFail (exception));
         }
       }
     });
@@ -386,7 +376,7 @@ Elm.Native.ElmFire.make = function (localRuntime) {
   }
 
   function subscribeConditional (createResponseTask, createCancellationTask, query, location) {
-    return Task .asyncFunction (function (callback) {
+    return _elm_lang$core$Native_Scheduler .nativeBinding (function (callback) {
       var ref = getRef (location, callback);
       if (ref) {
         var subscriptionId = nextSubscriptionId ();
@@ -394,7 +384,7 @@ Elm.Native.ElmFire.make = function (localRuntime) {
           var snapshot = snapshot2elm (subscriptionId, fbSnapshot, prevKey);
           var responseTask = fromMaybe (createResponseTask (snapshot));
           if (responseTask !== null) {
-            Task .perform (responseTask);
+            _elm_lang$core$Native_Scheduler .rawSpawn (responseTask);
           }
         };
         var onCancel = function (err) {
@@ -403,7 +393,7 @@ Elm.Native.ElmFire.make = function (localRuntime) {
             _0: subscriptionId,
             _1: fbTaskError (err)
           };
-          Task .perform (createCancellationTask (cancellation));
+          _elm_lang$core$Native_Scheduler .rawSpawn (createCancellationTask (cancellation));
         };
         var eventType = queryEventType (query);
         subscriptions [subscriptionId] = {
@@ -415,41 +405,41 @@ Elm.Native.ElmFire.make = function (localRuntime) {
         try { queryOrderAndFilter (query, ref)
               .on (eventType, onResponse, onCancel); }
         catch (exception) {
-          callback (exTaskFail (exception));
+          callback (exceptionTaskFail (exception));
           return;
         }
-        callback (Task.succeed (subscriptionId));
+        callback (_elm_lang$core$Native_Scheduler.succeed (subscriptionId));
       }
     });
   }
 
   function unsubscribe (subscription) {
-    return Task .asyncFunction (function (callback) {
+    return _elm_lang$core$Native_Scheduler .nativeBinding (function (callback) {
       if (subscriptions.hasOwnProperty (subscription)) {
         var query = subscriptions [subscription];
         delete subscriptions [subscription];
         try { query.ref.off (query.eventType, query.callback); }
         catch (exception) {
-          callback (exTaskFail (exception));
+          callback (exceptionTaskFail (exception));
           return;
         }
-        Task.perform (query.createCancellationTask ({
+        _elm_lang$core$Native_Scheduler.rawSpawn (query.createCancellationTask ({
           ctor: 'Unsubscribed', _0: subscription
         }));
-        callback (Task.succeed (Utils.Tuple0));
+        callback (_elm_lang$core$Native_Scheduler.succeed (_elm_lang$core$Native_Utils.Tuple0));
       } else {
-        callback (Task.fail ({ ctor: 'UnknownSubscription' }));
+        callback (_elm_lang$core$Native_Scheduler.fail ({ ctor: 'UnknownSubscription' }));
       }
     });
   }
 
   function once (query, location) {
-    return Task .asyncFunction (function (callback) {
+    return _elm_lang$core$Native_Scheduler .nativeBinding (function (callback) {
       var ref = getRef (location, callback);
       if (ref) {
         var onResponse = function (fbSnapshot, prevKey) {
           var snapshot = snapshot2elm ('_once_', fbSnapshot, prevKey);
-          callback (Task.succeed (snapshot));
+          callback (_elm_lang$core$Native_Scheduler.succeed (snapshot));
         };
         var onCancel = function (err) {
           var error = fbTaskFail (err);
@@ -459,7 +449,7 @@ Elm.Native.ElmFire.make = function (localRuntime) {
         try { queryOrderAndFilter (query, ref)
               .once (eventType, onResponse, onCancel); }
         catch (exception) {
-          callback (exTaskFail (exception));
+          callback (exceptionTaskFail (exception));
         }
       }
     });
@@ -473,7 +463,7 @@ Elm.Native.ElmFire.make = function (localRuntime) {
       prevKey = childSnapshot .key;
       arr .push (childSnapshot);
     });
-    return List.fromArray (arr);
+    return _elm_lang$core$List$fromArray (arr);
   }
 
   function toListGeneric (snapshot, mapSnapshot) {
@@ -481,7 +471,7 @@ Elm.Native.ElmFire.make = function (localRuntime) {
    snapshot .intern_ .forEach (function (fbChildSnapshot) {
      arr .push (mapSnapshot (fbChildSnapshot));
    });
-   return List.fromArray (arr);
+   return _elm_lang$core$List$fromArray (arr);
  }
 
   function toValueList (snapshot) {
@@ -498,7 +488,7 @@ Elm.Native.ElmFire.make = function (localRuntime) {
 
   function toPairList (snapshot) {
     return toListGeneric (snapshot, function (fbChildSnapshot) {
-      return Utils.Tuple2 (fbChildSnapshot .key (), fbChildSnapshot .val ());
+      return _elm_lang$core$Native_Utils.Tuple2 (fbChildSnapshot .key (), fbChildSnapshot .val ());
     });
   }
 
@@ -507,20 +497,19 @@ Elm.Native.ElmFire.make = function (localRuntime) {
   }
 
   function setOffline (off) {
-    return Task .asyncFunction (function (callback) {
+    return _elm_lang$core$Native_Scheduler .nativeBinding (function (callback) {
       if (off) {
         Firebase.goOffline ();
       } else {
         Firebase.goOnline ();
       }
-      callback (Task.succeed (Utils.Tuple0));
+      callback (_elm_lang$core$Native_Scheduler.succeed (_elm_lang$core$Native_Utils.Tuple0));
     });
   }
 
   var serverTimeStamp = Firebase.ServerValue.TIMESTAMP;
 
-  return localRuntime.Native.ElmFire.values =
-  {
+  return {
     // Values exported to Elm
       toUrl: toUrl
     , key: key
@@ -548,4 +537,4 @@ Elm.Native.ElmFire.make = function (localRuntime) {
     , getRef: getRef
     , pleaseReportThis: pleaseReportThis
   };
-};
+} ();
