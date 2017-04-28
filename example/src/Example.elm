@@ -11,7 +11,6 @@ module Main exposing (..)
 import Html exposing (Html, div, input, output, label, text, a)
 import Html.Events exposing (on, targetValue)
 import Html.Attributes exposing (href, target)
-import Html.App
 import Task exposing (Task)
 import Json.Encode as JE
 import Json.Decode as JD
@@ -41,9 +40,9 @@ firebaseUrl =
     "https://elmfiretest.firebaseio.com/example"
 
 
-main : Program Never
+main : Program Never Model Msg
 main =
-    Html.App.program
+    Html.program
         { init = init
         , update = update
         , view = view
@@ -77,9 +76,8 @@ update msg model =
     case msg of
         Send text ->
             ( model
-            , Task.perform
-                (Sent << Err)
-                (Sent << Ok << (always ()))
+            , Task.attempt
+                (Sent << Result.map (always ()))
                 (set (JE.string text) (fromUrl firebaseUrl))
             )
 
