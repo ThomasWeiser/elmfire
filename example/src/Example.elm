@@ -37,7 +37,7 @@ import ElmFire
 
 firebaseUrl : String
 firebaseUrl =
-    "https://elmfiretest.firebaseio.com/example"
+    "https://p-7dae7.firebaseio.com/test"
 
 
 main : Program Never Model Msg

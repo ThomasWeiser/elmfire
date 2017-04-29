@@ -5,15 +5,28 @@
 	<title>ElmFire Example</title>
 </head>
 <body>
-<div id="main"></div>
-<script src="https://cdn.firebase.com/js/client/2.4.2/firebase.js"></script>
-<script src="build/elm.js"></script>
-<script>
-    var node = document.getElementById('main');
-    var app = Elm.Main.embed(node);
-</script>
+    <div id="main"></div>
+
+    <script src="https://www.gstatic.com/firebasejs/3.9.0/firebase.js"></script>
+    <script>
+        // Initialize Firebase
+        var config = {
+            apiKey: "AIzaSyBYA5qGnTsJqwIqIsvNB1Ymth2ldfc0lVo",
+            authDomain: "p-7dae7.firebaseapp.com",
+            databaseURL: "https://p-7dae7.firebaseio.com",
+            projectId: "p-7dae7",
+            storageBucket: "p-7dae7.appspot.com",
+            messagingSenderId: "588903335427"
+            };
+        firebase.initializeApp(config);
+    </script>
+
+    <script src="build/elm.js"></script>
+    <script>
+        // Initialize ELM
+        var node = document.getElementById('main');
+        var app = Elm.Main.embed(node);
+    </script>
+
 </body>
 </html>
-
-
-

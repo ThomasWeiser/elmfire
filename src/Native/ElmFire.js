@@ -5,6 +5,11 @@ var _ThomasWeiser$elmfire$Native_ElmFire = function () {
 
   var pleaseReportThis = ' Should not happen, please report this as a bug in ElmFire!';
 
+
+  // Get a reference to the database service
+  var database = firebase.database();
+
+
   function asMaybe (value) {
     if (typeof value === 'undefined' || value === null) {
       return { ctor: 'Nothing' };
@@ -82,7 +87,7 @@ var _ThomasWeiser$elmfire$Native_ElmFire = function () {
       var rest = locationList._1;
       switch (head._0) {
         case 'url':
-          ref = new Firebase (head._1);
+          ref = database.refFromURL(head._1)
           break;
         case 'child':
           ref = getRefStep (rest) .child (head._1);
@@ -122,7 +127,7 @@ var _ThomasWeiser$elmfire$Native_ElmFire = function () {
   }
 
   function key (reference) {
-    var res = reference .key ();
+    var res = reference.key;
     if (res === null) {
       res = '';
     }
@@ -358,7 +363,7 @@ var _ThomasWeiser$elmfire$Native_ElmFire = function () {
   }
 
   function snapshot2elm (subscription, fbSnapshot, prevKey) {
-    var key = fbSnapshot .key ();
+    var key = fbSnapshot .key;
     if (key === null) {
       key = '';
     }
@@ -366,7 +371,7 @@ var _ThomasWeiser$elmfire$Native_ElmFire = function () {
     return {
       subscription: subscription,
       key: key,
-      reference: fbSnapshot .ref (),
+      reference: fbSnapshot .ref,
       existing: value !== null,
       value: value,
       prevKey: asMaybe (prevKey),
@@ -507,7 +512,7 @@ var _ThomasWeiser$elmfire$Native_ElmFire = function () {
     });
   }
 
-  var serverTimeStamp = Firebase.ServerValue.TIMESTAMP;
+  var serverTimeStamp = firebase.database.ServerValue.TIMESTAMP;
 
   return {
     // Values exported to Elm
