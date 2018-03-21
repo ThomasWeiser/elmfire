@@ -1,5 +1,5 @@
 {
-    "version": "1.0.7",
+    "version": "1.0.8",
     "summary": "Firebase Bindings for Elm",
     "repository": "https://github.com/ThomasWeiser/elmfire.git",
     "license": "BSD3",
@@ -12,7 +12,7 @@
     ],
     "native-modules": true,
     "dependencies": {
-        "elm-lang/core": "3.0.0 <= v < 4.0.0"
+        "elm-lang/core": "5.0.0 <= v < 6.0.0"
     },
-    "elm-version": "0.16.0 <= v < 0.17.0"
+    "elm-version": "0.18.0 <= v < 0.19.0"
 }
