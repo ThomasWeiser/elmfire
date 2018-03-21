@@ -1,4 +1,4 @@
-module ElmFire.Auth
+module ElmFire.Auth exposing
   ( Authentication
   , getAuth, subscribeAuth, unsubscribeAuth
   , Identification
@@ -10,7 +10,7 @@ module ElmFire.Auth
   , UserOperation
   , userOperation
   , createUser, removeUser, changeEmail, changePassword, resetPassword
-  ) where
+  )
 
 
 {-| Elm bindings to Firebase Authentication.
